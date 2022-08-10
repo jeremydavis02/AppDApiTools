@@ -1,0 +1,8 @@
+/__pycache__
+/.idea
+/*.csv
+/*.json
+/config.ini
+*.json
+/api_classes/__pycache__
+api_classes/__pycache__/*
