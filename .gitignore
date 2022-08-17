@@ -6,3 +6,15 @@
 *.json
 /api_classes/__pycache__
 api_classes/__pycache__/*
+dist/.DS_Store
+dist/AppDApiTools-0.0.1/.DS_Store
+dist/AppDApiTools-0.0.1/src/AppDApiTools/.DS_Store
+not_used_requirements.txt
+not_used_requirements.txt
+not_used_requirements.txt
+not_used_setup.py
+not_used_setup.py
+*.pyc
+.DS_Store
+not_used_requirements.txt
+not_used_requirements.txt

@@ -15,6 +15,7 @@ def get_list(base_url, token, application_name, out_file=None):
         json.dump(response.json(), fp)
     return response.json()
 
+
 def load_file(file_path):
     f = open(file_path, 'r')
     return json.load(f)
@@ -33,6 +34,7 @@ def parse_json_recursively_multi(json_object, target_key, vals=[]):
             vals = parse_json_recursively_multi(item, target_key, vals)
 
     return vals
+
 
 def parse_json_recursively(json_object, target_key, call_num: int):
     res = None
@@ -63,6 +65,7 @@ def parse_json_recursively(json_object, target_key, call_num: int):
 
     #print(res)
     return res
+
 
 def build_json_list(data={}, config_keys=[], entity_keys=[]):
     ndata = []

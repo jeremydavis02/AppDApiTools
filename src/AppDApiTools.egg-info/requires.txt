@@ -1,0 +1,8 @@
+requests
+importlib
+argparse
+configparser
+requests
+
+[:python_version >= "3.9"]
+importlib-metadata
