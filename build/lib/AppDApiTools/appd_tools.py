@@ -23,6 +23,7 @@ def build_config():
 
     with open(os.path.join(os.path.dirname(__file__), 'config', 'config.ini'), 'w') as c_file:
         new_config.write(c_file)
+    sys.exit()
 
 
 def do_work():
