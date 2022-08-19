@@ -30,11 +30,11 @@ class Synthetics(ApiBase):
 
     @classmethod
     def run(cls, args, config):
-        print('Synthetics run')
+        #print('Synthetics run')
 
         # create instance of yourself
         synth = Synthetics(config, args)
-        print(args.function)
+        #print(args.function)
         if args.function == 'web_list':
             synth.web_get_list()
         if args.function == 'api_list':
@@ -52,6 +52,7 @@ class Synthetics(ApiBase):
         super().__init__(config, args)
 
     def api_get_list(self, out_file=None) -> dict:
+        print('Initiating api synthetic get list call...')
         if self.config is None:
             return {}
         #headers = {"Authorization": "Basic "+token}
@@ -63,19 +64,20 @@ class Synthetics(ApiBase):
         return response.json()
 
     def web_get_list(self, out_file=None) -> dict:
+        print('Initiating web synthetic get list call...')
         if self.config is None:
             return {}
         url = self.config['SYNTH_INFO']['synthetic_base_url']+'v1/synthetic/schedule'
         auth = (self.config['SYNTH_INFO']['eum_account_name'], self.config['SYNTH_INFO']['eum_license_key'])
         response = requests.get(url, auth=auth)
-        #print(response.json())
+        print(response.json())
         if out_file is not None:
             fp = open(out_file, 'w')
             json.dump(response.json(), fp)
         return response.json()
 
     def web_update(self, job_data):
-        print('web_update')
+        print('Initiating web synthetic update call...')
         jid = job_data['_id']
         job_data = json.dumps(job_data)
         url = self.config['SYNTH_INFO']['synthetic_base_url']+'v1/synthetic/schedule/'+jid
@@ -86,9 +88,11 @@ class Synthetics(ApiBase):
         #print(response.text)
 
     def disable_web(self):
+        print('Initiating web synthetic disable call...')
         self._enable_disable_web(False)
 
     def enable_web(self):
+        print('Initiating web synthetic enable call...')
         self._enable_disable_web(True)
 
     def _enable_disable_web(self, enabled):
@@ -108,7 +112,7 @@ class Synthetics(ApiBase):
                         self.web_update(item)
 
     def api_update(self, job_data):
-        print('api_update')
+        print('Initiating api synthetic update call...')
         jid = job_data['_id']
         job_data = json.dumps(job_data)
         url = self.config['SYNTH_INFO']['synthetic_base_url'] + 'v1/synthetic/api/schedule/' + jid
@@ -119,9 +123,11 @@ class Synthetics(ApiBase):
         #print(response.text)
 
     def disable_api(self):
+        print('Initiating api synthetic disable call...')
         self._enable_disable_api(False)
 
     def enable_api(self):
+        print('Initiating api synthetic enable call...')
         self._enable_disable_api(True)
 
     def _enable_disable_api(self, enabled):

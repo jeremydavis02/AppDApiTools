@@ -54,7 +54,7 @@ def do_work():
         sys.stderr.write('No Api Group Specified!')
         parser.print_help()
         sys.exit(2)
-    api_class_ref = getattr(importlib.import_module('api_classes.' + args.subparser_name.lower()), args.subparser_name)
+    api_class_ref = getattr(importlib.import_module('AppDApiTools.api_classes.' + args.subparser_name.lower()), args.subparser_name)
     #print(args.subparser_name)
     api_class_ref.run(args, config)
 
