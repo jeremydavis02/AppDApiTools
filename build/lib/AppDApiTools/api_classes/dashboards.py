@@ -22,6 +22,8 @@ class Dashboards(ApiBase):
     @classmethod
     def run(cls, args, config):
         print('Dashboards run')
+        #TODO replicate a dashboard with search and replace as a whole
+
 
     def __init__(self, config, args):
         super().__init__(config, args)
