@@ -13,6 +13,7 @@ from .api_base import ApiBase
 
 class Dashboards(ApiBase):
     builder_config = {"search": [], "replace": []}
+
     @classmethod
     def get_function_parms(cls, subparser):
         # print('getFunctions')
@@ -72,11 +73,11 @@ class Dashboards(ApiBase):
         headers = {"Authorization": "Bearer " + token}
         url = base_url + 'controller/CustomDashboardImportExportServlet?dashboardId=' + self.args.id + '&output=JSON'
         response = requests.get(url, headers=headers)
-        ddata = response.json()
-        d_file = ddata['name'].strip() + ".json"
+        dash_data = response.json()
+        d_file = dash_data['name'].strip() + ".json"
         if self.args.output:
             d_file = self.args.output
-        json_obj = json.dumps(ddata)
+        json_obj = json.dumps(dash_data)
         with open(d_file, "w") as outfile:
             outfile.write(json_obj)
         return json_obj
@@ -89,11 +90,12 @@ class Dashboards(ApiBase):
             return default
         return self.builder_config["options"][option]
 
-    def _get_builder_config(self):
+    def _get_builder_config(self) -> None:
         if self.args.builder_config:
             self.builder_config = json.loads(open(self.args.builder_config, "r").read())
-            return
+            return None
         self._do_verbose_print('Using empty builder config since none specified, see --help')
+        return None
 
     def _normalize_pattern(self, pattern):
         if isinstance(pattern, list):
@@ -112,45 +114,61 @@ class Dashboards(ApiBase):
 
         return pattern
 
+    # Calculate the dimensions of a AppDynamics dashboard
+    def _calculate_dimensions(self, dashboard):
+        max_x = 0  # height
+        max_y = 0  # width
+        min_x = dashboard["width"]
+        min_y = dashboard["height"]
+
+        # Compute the dimension of the current dashboard
+        for widget in dashboard["widgetTemplates"]:
+            max_y = widget["y"] + widget["height"] if widget["y"] + widget["height"] > max_y else max_y
+            min_x = widget["x"] if widget["x"] < min_x else min_x
+            min_y = widget["y"] if widget["y"] < min_y else min_y
+            max_x = widget["x"] + widget["width"] if widget["x"] + widget["width"] > max_x else max_x
+
+        return max_x, max_y, min_x, min_y
+
     # The following function is the "main" method processing a dashboard search/replace
     def _repeat_dashboard(self, dashboard):
         # Should the existing dashboard be replaced or should we extend the list?
-        extendWidgets = self._get_option("extendWidgets", True)
-        topOffset = self._get_option("topOffset", 0)
-        leftOffset = self._get_option("leftOffset", 0)
-        maxX, maxY, minX, minY = calculateDimensions(dashboard["widgetTemplates"])
+        extend_widgets = self._get_option("extendWidgets", True)
+        top_offset = self._get_option("topOffset", 0)
+        left_offset = self._get_option("leftOffset", 0)
+        max_x, max_y, min_x, min_y = self._calculate_dimensions(dashboard)
 
-        newWidgets = []
-        i = 1 if extendWidgets else 0
-        search = self._normalize_pattern(config["search"])
+        new_widgets = []
+        i = 1 if extend_widgets else 0
+        search = self._normalize_pattern(self.builder_config["search"])
         # Walk over all search&replace patterns and create a new "row" for each of them.
-        for replace in self._normalize_pattern(config["replace"]):
-            yOffset = i * maxY + topOffset
-            if (i + 1) * maxY + topOffset > dashboard["height"]:
-                dashboard["height"] = (i + 1) * maxY + topOffset
+        for replace in self._normalize_pattern(self.builder_config["replace"]):
+            y_offset = i * max_y + top_offset
+            if (i + 1) * max_y + top_offset > dashboard["height"]:
+                dashboard["height"] = (i + 1) * max_y + top_offset
             if reduce(lambda carry, element: carry and isinstance(element, list), replace, True):
                 j = 0
                 for column in replace:
-                    xOffset = j * maxX + leftOffset
-                    if (j + 1) * maxY + leftOffset > dashboard["width"]:
-                        dashboard["width"] = (j + 1) * maxY + leftOffset
+                    x_offset = j * max_x + left_offset
+                    if (j + 1) * max_y + left_offset > dashboard["width"]:
+                        dashboard["width"] = (j + 1) * max_y + left_offset
                     for widget in dashboard["widgetTemplates"]:
                         c = self._walk(copy.deepcopy(widget), search, column)
-                        c["y"] += yOffset
-                        c["x"] += xOffset
-                        newWidgets.append(c)
+                        c["y"] += y_offset
+                        c["x"] += x_offset
+                        new_widgets.append(c)
                     j += 1
             else:
                 for widget in dashboard["widgetTemplates"]:
                     c = self._walk(copy.deepcopy(widget), search, replace)
-                    c["y"] += yOffset
-                    newWidgets.append(c)
+                    c["y"] += y_offset
+                    new_widgets.append(c)
             i += 1
 
-        if (extendWidgets):
-            dashboard["widgetTemplates"].extend(newWidgets)
+        if extend_widgets:
+            dashboard["widgetTemplates"].extend(new_widgets)
         else:
-            dashboard["widgetTemplates"] = newWidgets
+            dashboard["widgetTemplates"] = new_widgets
 
         return dashboard
 
@@ -205,7 +223,7 @@ class Dashboards(ApiBase):
 
     def duplicate(self):
         self._do_verbose_print('Doing dashboard Duplication...')
-        builder_config = self._get_builder_config()
+        self._get_builder_config()
         source_dash = None
         if self.args.input:
             self._do_verbose_print('--input specified so using that, see --help')
@@ -216,3 +234,10 @@ class Dashboards(ApiBase):
         if source_dash is None:
             self._do_verbose_print('--id or --input was not specified so exiting, see --help')
             return
+        result_dash = self._repeat_dashboard(source_dash)
+        if self.args.name:
+            self._do_verbose_print(f'--name specified so setting new dashboard name to {self.args.name}...')
+            result_dash["name"] = self.args.name
+        result = json.dumps(result_dash, sort_keys=self.args.prettify, indent=4 if self.args.prettify else None)
+        if self.args.output:
+            self._do_verbose_print(f'--output specified so writing new dashboard name to {self.args.output}...')

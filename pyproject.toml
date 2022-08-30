@@ -22,7 +22,6 @@ license = { file="LICENSE" }
 dependencies = [
     "requests",
     'importlib-metadata; python_version>="3.9"',
-    "importlib",
     "argparse",
     "configparser",
     "requests",

@@ -2,7 +2,10 @@
 
 This package is setup as a buildable and installable python project.
 
-If you pull the repo, you can do a python -m build
+If you pull the repo, you need to do:
+python3 -m pip install --upgrade pip (upgrade pip)
+pip3 install build setuptools (install build and setuptools)
+you can do a python3 -m build (do package build)
 It will build a tar.gz and a whl (wheel archive) in /dist
 
 You can take either of those, though python suggest preference to the ".whl"
