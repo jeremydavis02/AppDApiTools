@@ -29,12 +29,11 @@ class Dashboards(ApiBase):
         class_commands.add_argument('function', choices=functions, help='The Dashboards api function to run')
         class_commands.add_argument('--id', help='Specific dashboard id')
         class_commands.add_argument('--builder_config', help='Search and replace config file in json')
-        class_commands.add_argument('-i', '--input', help='The input template created with the AppDynamics UI',
-                                    required=True)
-        class_commands.add_argument('-o', '--output', help='The output file.')
-        class_commands.add_argument('-p', '--prettify', help='Prettify the json output', action='store_true')
-        class_commands.add_argument('-v', '--verbose', help='Enable verbose output', action='store_true')
-        class_commands.add_argument('-n', '--name', help='Set the name of the new dashboard', default=False)
+        class_commands.add_argument('--input', help='The input template created with the AppDynamics UI')
+        class_commands.add_argument('--output', help='The output file.')
+        class_commands.add_argument('--prettify', help='Prettify the json output', action='store_true')
+        class_commands.add_argument('--verbose', help='Enable verbose output', action='store_true')
+        class_commands.add_argument('--name', help='Set the name of the new dashboard', default=False)
         return class_commands
 
     @classmethod
@@ -45,6 +44,8 @@ class Dashboards(ApiBase):
         dash = Dashboards(config, args)
         if args.function == 'export':
             dash.export()
+        if args.function == 'duplicate':
+            dash.duplicate()
 
     def __init__(self, config, args):
         super().__init__(config, args)
@@ -80,7 +81,7 @@ class Dashboards(ApiBase):
         json_obj = json.dumps(dash_data)
         with open(d_file, "w") as outfile:
             outfile.write(json_obj)
-        return json_obj
+        return dash_data
 
     # Process the options. If an option is not set, return the default value
     def _get_option(self, option, default):
@@ -88,6 +89,14 @@ class Dashboards(ApiBase):
             return default
         if option not in self.builder_config["options"]:
             return default
+        return self.builder_config["options"][option]
+
+    def _set_option(self, option, value):
+        if "options" not in self.builder_config:
+            self.builder_config["options"] = {option: value}
+            return self.builder_config["options"][option]
+
+        self.builder_config["options"][option] = value
         return self.builder_config["options"][option]
 
     def _get_builder_config(self) -> None:
@@ -224,6 +233,15 @@ class Dashboards(ApiBase):
     def duplicate(self):
         self._do_verbose_print('Doing dashboard Duplication...')
         self._get_builder_config()
+        # we are wrapping builder with specific functions so lets guide config as such
+        extend_widgets = self._get_option("extendWidgets", False)
+        if extend_widgets:
+            warning = """You have specified to duplicate a dashboard with search and replace, 
+            but configuration is set to extend dashboard elements"""
+            print(warning)
+            answer = input('Do you want to change it? [yes|no]')
+            if 'yes' in answer.lower():
+                self._set_option("extendWidgets", False)
         source_dash = None
         if self.args.input:
             self._do_verbose_print('--input specified so using that, see --help')
@@ -239,5 +257,10 @@ class Dashboards(ApiBase):
             self._do_verbose_print(f'--name specified so setting new dashboard name to {self.args.name}...')
             result_dash["name"] = self.args.name
         result = json.dumps(result_dash, sort_keys=self.args.prettify, indent=4 if self.args.prettify else None)
+
         if self.args.output:
             self._do_verbose_print(f'--output specified so writing new dashboard name to {self.args.output}...')
+            new_file = open(self.args.output, "w")
+            new_file.write(result)
+        else:
+            print(result)
