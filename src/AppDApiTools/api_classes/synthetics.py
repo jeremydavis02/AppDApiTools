@@ -80,6 +80,7 @@ class Synthetics(ApiBase):
         print('Initiating web synthetic update call...')
         jid = job_data['_id']
         job_data = json.dumps(job_data)
+        print(job_data)
         url = self.config['SYNTH_INFO']['synthetic_base_url']+'v1/synthetic/schedule/'+jid
         auth = (self.config['SYNTH_INFO']['eum_account_name'], self.config['SYNTH_INFO']['eum_license_key'])
         headers = {'Content-type': 'application/json'}
