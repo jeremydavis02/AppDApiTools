@@ -39,7 +39,6 @@ class Dashboards(ApiBase):
     @classmethod
     def run(cls, args, config):
 
-        print('Dashboards run')
         # TODO replicate a dashboard with search and replace as a whole
         dash = Dashboards(config, args)
         if args.function == 'export':

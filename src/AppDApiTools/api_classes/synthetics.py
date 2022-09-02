@@ -26,7 +26,13 @@ class Synthetics(ApiBase):
         class_commands.add_argument('function', choices=functions, help='The Synthetic api function to run')
         class_commands.add_argument('--name', help='Specific synthetic job name')
         class_commands.add_argument('--appkey', help='Specific appkey synthetic jobs')
+        class_commands.add_argument('--verbose', help='Enable verbose output', action='store_true')
+        class_commands.add_argument('--output', help='The output file.')
         return class_commands
+
+    def _do_verbose_print(self, msg):
+        if self.args.verbose:
+            print(msg)
 
     @classmethod
     def run(cls, args, config):
@@ -51,42 +57,56 @@ class Synthetics(ApiBase):
     def __init__(self, config, args):
         super().__init__(config, args)
 
-    def api_get_list(self, out_file=None) -> dict:
-        print('Initiating api synthetic get list call...')
+    def api_get_list(self) -> dict:
+        self.__set_request_logging()
+        self._do_verbose_print('Initiating api synthetic get list call...')
         if self.config is None:
             return {}
         #headers = {"Authorization": "Basic "+token}
         response = requests.get(self.config['SYNTH_INFO']['synthetic_base_url']+'v1/synthetic/api/schedule', auth=(self.config['SYNTH_INFO']['eum_account_name'], self.config['SYNTH_INFO']['eum_license_key']))
-        print(response.json())
-        if out_file is not None:
-            fp = open(out_file, 'w')
-            json.dump(response.json(), fp)
+        self._do_verbose_print(response.json())
+        self._dump_output(response.json())
+
         return response.json()
 
     def web_get_list(self, out_file=None) -> dict:
-        print('Initiating web synthetic get list call...')
+        self.__set_request_logging()
+        self._do_verbose_print('Initiating web synthetic get list call...')
         if self.config is None:
             return {}
         url = self.config['SYNTH_INFO']['synthetic_base_url']+'v1/synthetic/schedule'
         auth = (self.config['SYNTH_INFO']['eum_account_name'], self.config['SYNTH_INFO']['eum_license_key'])
         response = requests.get(url, auth=auth)
-        print(response.json())
-        if out_file is not None:
-            fp = open(out_file, 'w')
-            json.dump(response.json(), fp)
+        #print(response.json())
+        self._dump_output(response.json())
         return response.json()
 
+    def _dump_output(self, data):
+        if self.args.output is not None:
+            self._do_verbose_print(f'--output specified so writing out json to file {self.args.output}')
+            fp = open(self.args.output, 'w')
+            json.dump(data, fp)
+
+    def __set_request_logging(self):
+        if self.args.verbose:
+            logging.basicConfig()
+            logging.getLogger().setLevel(logging.DEBUG)
+            requests_log = logging.getLogger("requests.packages.urllib3")
+            requests_log.setLevel(logging.DEBUG)
+            requests_log.propagate = True
+
     def web_update(self, job_data):
-        print('Initiating web synthetic update call...')
+        self.__set_request_logging()
+        self._do_verbose_print('Initiating web synthetic update call...')
         jid = job_data['_id']
         job_data = json.dumps(job_data)
-        print(job_data)
+
         url = self.config['SYNTH_INFO']['synthetic_base_url']+'v1/synthetic/schedule/'+jid
         auth = (self.config['SYNTH_INFO']['eum_account_name'], self.config['SYNTH_INFO']['eum_license_key'])
         headers = {'Content-type': 'application/json'}
         response = requests.put(url, auth=auth, data=job_data, headers=headers)
-        print(response)
-        #print(response.text)
+        self._do_verbose_print(response)
+        self._do_verbose_print(response.text)
 
     def disable_web(self):
         print('Initiating web synthetic disable call...')
@@ -113,22 +133,23 @@ class Synthetics(ApiBase):
                         self.web_update(item)
 
     def api_update(self, job_data):
-        print('Initiating api synthetic update call...')
+        self.__set_request_logging()
+        self._do_verbose_print('Initiating api synthetic update call...')
         jid = job_data['_id']
         job_data = json.dumps(job_data)
         url = self.config['SYNTH_INFO']['synthetic_base_url'] + 'v1/synthetic/api/schedule/' + jid
         auth = (self.config['SYNTH_INFO']['eum_account_name'], self.config['SYNTH_INFO']['eum_license_key'])
         headers = {'Content-type': 'application/json'}
         response = requests.put(url, auth=auth, data=job_data, headers=headers)
-        print(response)
-        #print(response.text)
+        self._do_verbose_print(response)
+        self._do_verbose_print(response.text)
 
     def disable_api(self):
-        print('Initiating api synthetic disable call...')
+        self._do_verbose_print('Initiating api synthetic disable call...')
         self._enable_disable_api(False)
 
     def enable_api(self):
-        print('Initiating api synthetic enable call...')
+        self._do_verbose_print('Initiating api synthetic enable call...')
         self._enable_disable_api(True)
 
     def _enable_disable_api(self, enabled):
