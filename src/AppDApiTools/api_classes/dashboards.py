@@ -2,6 +2,7 @@ import base64
 import copy
 import difflib
 import json
+import os.path
 import re
 import sys
 from functools import reduce
@@ -42,7 +43,9 @@ class Dashboards(ApiBase):
         # TODO replicate a dashboard with search and replace as a whole
         dash = Dashboards(config, args)
         if args.function == 'export':
-            dash.export()
+            dash.do_export()
+        if args.function == 'import':
+            dash.do_import()
         if args.function == 'duplicate':
             dash.duplicate()
 
@@ -61,11 +64,35 @@ class Dashboards(ApiBase):
         if self.args.verbose:
             print(msg)
 
-    def export(self):
+    def do_import(self, dashboard=None):
+        self.__set_request_logging()
+        self._do_verbose_print('Doing dashboard Import...')
+        dash_file_name = 'dashboard.json'
+        if dashboard is None and self.args.input is None:
+            print('No dashboard data or specified input file with --input, see --help')
+            sys.exit()
+        if dashboard is None:
+            self._do_verbose_print(f'Loading dashboard input from {self.args.input}')
+            dashboard = json.loads(open(self.args.input, "r").read())
+            dash_file_name = os.path.basename(self.args.input)
+        dashboard = {'file': (dash_file_name, json.dumps(dashboard))}
+        print(dashboard)
+        print(type(dashboard))
+        token = self.get_oauth_token()
+        base_url = self.config['CONTROLLER_INFO']['base_url']
+        #headers = {"Authorization": "Bearer " + token}
+        auth = (self.config['CONTROLLER_INFO']['user']+'@'+self.config['CONTROLLER_INFO']['account_name'], self.config['CONTROLLER_INFO']['psw'])
+        url = base_url + 'controller/CustomDashboardImportExportServlet?output=JSON'
+        response = requests.post(url, auth=auth, files=dashboard)
+        dash_data = response.json()
+        self._do_verbose_print(dash_data)
+        self._do_verbose_print(response.text)
+
+    def do_export(self):
         self.__set_request_logging()
         self._do_verbose_print('Doing dashboard Export...')
         if self.args.id is None:
-            self._do_verbose_print('No dashboard id specified with --id, see --help')
+            print('No dashboard id specified with --id, see --help')
             sys.exit()
         self._do_verbose_print(f'Attempting to export dashboard with id={self.args.id}')
         token = self.get_oauth_token()
@@ -247,7 +274,7 @@ class Dashboards(ApiBase):
             source_dash = json.loads(open(self.args.input, "r").read())
         else:
             self._do_verbose_print('--id specified so calling export, see --help')
-            source_dash = self.export()
+            source_dash = self.do_export()
         if source_dash is None:
             self._do_verbose_print('--id or --input was not specified so exiting, see --help')
             return
