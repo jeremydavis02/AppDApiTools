@@ -266,7 +266,6 @@ class Dashboards(ApiBase):
                 dashboard_name = dashboard_data["name"]+".json"
                 backup.writestr(dashboard_name, json.dumps(dashboard_data))
 
-
     def duplicate(self):
         self.do_verbose_print('Doing dashboard Duplication...')
         self._get_builder_config()
