@@ -5,7 +5,6 @@ pyproject.toml
 setup.cfg
 src/AppDApiTools/__init__.py
 src/AppDApiTools/appd_tools.py
-src/AppDApiTools/dashboardbuilder-1.3.0.py
 src/AppDApiTools.egg-info/PKG-INFO
 src/AppDApiTools.egg-info/SOURCES.txt
 src/AppDApiTools.egg-info/dependency_links.txt
@@ -13,7 +12,9 @@ src/AppDApiTools.egg-info/entry_points.txt
 src/AppDApiTools.egg-info/requires.txt
 src/AppDApiTools.egg-info/top_level.txt
 src/AppDApiTools/api_classes/__init__.py
+src/AppDApiTools/api_classes/agents.py
 src/AppDApiTools/api_classes/api_base.py
+src/AppDApiTools/api_classes/applications.py
 src/AppDApiTools/api_classes/backends.py
 src/AppDApiTools/api_classes/dashboards.py
 src/AppDApiTools/api_classes/synthetics.py

@@ -1,2 +1,0 @@
-[console_scripts]
-appd_api_tools = AppDApiTools.appd_tools:do_work

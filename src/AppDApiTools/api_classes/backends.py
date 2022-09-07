@@ -22,6 +22,7 @@ class Backends(ApiBase):
         class_commands.add_argument('function', choices=functions, help='The Backend api function to run')
         class_commands.add_argument('--name', help='Specific synthetic job name')
         class_commands.add_argument('--appkey', help='Specific appkey synthetic jobs')
+        class_commands.add_argument('--verbose', help='Enable verbose output', action='store_true')
         return class_commands
 
     @classmethod
@@ -36,6 +37,7 @@ class Backends(ApiBase):
 
     def __init__(self, config, args):
         super().__init__(config, args)
+
 
     def get_list(self, out_file=None):
         if self.args.name is None:

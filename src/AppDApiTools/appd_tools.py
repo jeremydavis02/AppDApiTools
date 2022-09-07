@@ -1,7 +1,6 @@
 import argparse
 import configparser
 import importlib
-import logging
 import pkgutil
 import sys
 import os
@@ -65,11 +64,6 @@ if not config.sections():
     # run config setup
     build_config()
 
-logging.basicConfig()
-logging.getLogger().setLevel(logging.DEBUG)
-requests_log = logging.getLogger("requests.packages.urllib3")
-requests_log.setLevel(logging.DEBUG)
-requests_log.propagate = True
 
 
 if __name__ == '__main__':

@@ -5,6 +5,7 @@ import json
 import os.path
 import re
 import sys
+import zipfile
 from functools import reduce
 
 import requests
@@ -22,13 +23,13 @@ class Dashboards(ApiBase):
             'export',
             'import',
             'duplicate',
-            'replicate',
-            'tile',
-            'convert_absolute',
+            'backup',
+            # 'replicate',
+            # 'convert_absolute',
         ]
         class_commands = subparser.add_parser('Dashboards', help='Dashboards commands')
         class_commands.add_argument('function', choices=functions, help='The Dashboards api function to run')
-        class_commands.add_argument('--id', help='Specific dashboard id')
+        class_commands.add_argument('--id', help='Specific dashboard id or comma list')
         class_commands.add_argument('--builder_config', help='Search and replace config file in json')
         class_commands.add_argument('--input', help='The input template created with the AppDynamics UI')
         class_commands.add_argument('--output', help='The output file.')
@@ -48,53 +49,42 @@ class Dashboards(ApiBase):
             dash.do_import()
         if args.function == 'duplicate':
             dash.duplicate()
+        if args.function == 'backup':
+            dash.backup()
 
     def __init__(self, config, args):
         super().__init__(config, args)
 
-    def __set_request_logging(self):
-        if self.args.verbose:
-            logging.basicConfig()
-            logging.getLogger().setLevel(logging.DEBUG)
-            requests_log = logging.getLogger("requests.packages.urllib3")
-            requests_log.setLevel(logging.DEBUG)
-            requests_log.propagate = True
-
-    def _do_verbose_print(self, msg):
-        if self.args.verbose:
-            print(msg)
-
     def do_import(self, dashboard=None):
-        self.__set_request_logging()
-        self._do_verbose_print('Doing dashboard Import...')
+        self.set_request_logging()
+        self.do_verbose_print('Doing dashboard Import...')
         dash_file_name = 'dashboard.json'
         if dashboard is None and self.args.input is None:
             print('No dashboard data or specified input file with --input, see --help')
             sys.exit()
         if dashboard is None:
-            self._do_verbose_print(f'Loading dashboard input from {self.args.input}')
+            self.do_verbose_print(f'Loading dashboard input from {self.args.input}')
             dashboard = json.loads(open(self.args.input, "r").read())
             dash_file_name = os.path.basename(self.args.input)
         dashboard = {'file': (dash_file_name, json.dumps(dashboard))}
-        print(dashboard)
-        print(type(dashboard))
-        token = self.get_oauth_token()
+
         base_url = self.config['CONTROLLER_INFO']['base_url']
-        #headers = {"Authorization": "Bearer " + token}
+        # import with api key throws tons os user issues
         auth = (self.config['CONTROLLER_INFO']['user']+'@'+self.config['CONTROLLER_INFO']['account_name'], self.config['CONTROLLER_INFO']['psw'])
         url = base_url + 'controller/CustomDashboardImportExportServlet?output=JSON'
         response = requests.post(url, auth=auth, files=dashboard)
         dash_data = response.json()
-        self._do_verbose_print(dash_data)
-        self._do_verbose_print(response.text)
+        self.do_verbose_print(json.dumps(dash_data)[0:200]+'...')
+        return dash_data
 
     def do_export(self):
-        self.__set_request_logging()
-        self._do_verbose_print('Doing dashboard Export...')
+
+        self.set_request_logging()
+        self.do_verbose_print('Doing dashboard Export...')
         if self.args.id is None:
             print('No dashboard id specified with --id, see --help')
             sys.exit()
-        self._do_verbose_print(f'Attempting to export dashboard with id={self.args.id}')
+        self.do_verbose_print(f'Attempting to export dashboard with id={self.args.id}')
         token = self.get_oauth_token()
         base_url = self.config['CONTROLLER_INFO']['base_url']
         headers = {"Authorization": "Bearer " + token}
@@ -129,7 +119,7 @@ class Dashboards(ApiBase):
         if self.args.builder_config:
             self.builder_config = json.loads(open(self.args.builder_config, "r").read())
             return None
-        self._do_verbose_print('Using empty builder config since none specified, see --help')
+        self.do_verbose_print('Using empty builder config since none specified, see --help')
         return None
 
     def _normalize_pattern(self, pattern):
@@ -224,7 +214,7 @@ class Dashboards(ApiBase):
             prop = self._search_and_replace(search[i], key, replace[i], prop)
 
         if old != prop:
-            self._do_verbose_print(self._show_diff(old, prop))
+            self.do_verbose_print(f'Modifying Property: {self._show_diff(old, prop)}')
 
         return prop
 
@@ -256,37 +246,57 @@ class Dashboards(ApiBase):
         if isinstance(target, (int, int)):
             return replace["value"] if target == search["value"] else target
 
+    def backup(self):
+        self.do_verbose_print(f'Doing dashboard Backup...')
+        if self.args.id is None:
+            print('backup function needs --id with value[s] see --help')
+            sys.exit()
+        self.do_verbose_print(self.args.id)
+        # get and split the args cause we will override id in loop
+        dashboard_list = self.args.id.split(',')
+        # get and null output for export loop
+        zip_output = self.args.output
+        self.args.output = None
+        self.do_verbose_print(dashboard_list)
+        with zipfile.ZipFile(zip_output, mode="w") as backup:
+            for dashboard in dashboard_list:
+                # reset id for call below
+                self.args.id = dashboard
+                dashboard_data = self.do_export()
+                dashboard_name = dashboard_data["name"]+".json"
+                backup.writestr(dashboard_name, json.dumps(dashboard_data))
+
+
     def duplicate(self):
-        self._do_verbose_print('Doing dashboard Duplication...')
+        self.do_verbose_print('Doing dashboard Duplication...')
         self._get_builder_config()
         # we are wrapping builder with specific functions so lets guide config as such
         extend_widgets = self._get_option("extendWidgets", False)
         if extend_widgets:
             warning = """You have specified to duplicate a dashboard with search and replace, 
             but configuration is set to extend dashboard elements"""
-            print(warning)
             answer = input('Do you want to change it? [yes|no]')
             if 'yes' in answer.lower():
                 self._set_option("extendWidgets", False)
         source_dash = None
         if self.args.input:
-            self._do_verbose_print('--input specified so using that, see --help')
+            self.do_verbose_print('--input specified so using that, see --help')
             source_dash = json.loads(open(self.args.input, "r").read())
         else:
-            self._do_verbose_print('--id specified so calling export, see --help')
+            self.do_verbose_print('--id specified so calling export, see --help')
             source_dash = self.do_export()
         if source_dash is None:
-            self._do_verbose_print('--id or --input was not specified so exiting, see --help')
+            self.do_verbose_print('--id or --input was not specified so exiting, see --help')
             return
         result_dash = self._repeat_dashboard(source_dash)
         if self.args.name:
-            self._do_verbose_print(f'--name specified so setting new dashboard name to {self.args.name}...')
+            self.do_verbose_print(f'--name specified so setting new dashboard name to {self.args.name}...')
             result_dash["name"] = self.args.name
         result = json.dumps(result_dash, sort_keys=self.args.prettify, indent=4 if self.args.prettify else None)
 
         if self.args.output:
-            self._do_verbose_print(f'--output specified so writing new dashboard name to {self.args.output}...')
+            self.do_verbose_print(f'--output specified so writing new dashboard name to {self.args.output}...')
             new_file = open(self.args.output, "w")
             new_file.write(result)
         else:
-            print(result)
+            self.do_import(result_dash)

@@ -9,6 +9,7 @@ api_classes/__pycache__/*
 dist/.DS_Store
 dist/AppDApiTools-0.0.1/.DS_Store
 dist/AppDApiTools-0.0.1/src/AppDApiTools/.DS_Store
+build/lib/AppDApiTools
 not_used_requirements.txt
 not_used_requirements.txt
 not_used_requirements.txt
