@@ -20,26 +20,22 @@ class Backends(ApiBase):
         ]
         class_commands = subparser.add_parser('Backends', help='Synthetics commands')
         class_commands.add_argument('function', choices=functions, help='The Backend api function to run')
-        class_commands.add_argument('--name', help='Specific synthetic job name')
-        class_commands.add_argument('--appkey', help='Specific appkey synthetic jobs')
+        class_commands.add_argument('--name', help='Specific application name')
+        class_commands.add_argument('--output', help='The output file.')
         class_commands.add_argument('--verbose', help='Enable verbose output', action='store_true')
         return class_commands
 
     @classmethod
     def run(cls, args, config):
-        print('Synthetics run')
-
         # create instance of yourself
         backends = Backends(config, args)
-        print(args.function)
         if args.function == 'get_list':
             backends.get_list()
 
     def __init__(self, config, args):
         super().__init__(config, args)
 
-
-    def get_list(self, out_file=None):
+    def get_list(self):
         if self.args.name is None:
             print('this function requires --name for application')
             return {}
@@ -48,9 +44,9 @@ class Backends(ApiBase):
         headers = {"Authorization": "Bearer " + token}
         url = base_url + 'controller/rest/applications/' + self.args.name + '/backends?output=JSON'
         response = requests.get(url, headers=headers)
-        print(response.json())
-        if out_file is not None:
-            fp = open(out_file, 'w')
+        self.do_verbose_print(response.json())
+        if self.args.output is not None:
+            fp = open(self.args.output, 'w')
             json.dump(response.json(), fp)
         return response.json()
 
@@ -67,3 +63,34 @@ class Backends(ApiBase):
                 vals = self._parse_json_recursively_multi(item, target_key, vals)
 
         return vals
+
+    def build_json_list(self, data={}, config_keys=[], entity_keys=[]):
+        ndata = []
+        # loop through data['entities'][1][x]
+        for i in range(len(data['entities'][1])):
+            entity_columns = {}
+            if len(entity_keys) > 0:
+                # lets check non recursively before diving into config
+                for ek in entity_keys:
+                    if ek in data['entities'][1][i][1]:
+                        entity_columns[ek] = data['entities'][1][i][1][ek]
+            # print(columns)
+            for x in range(len(data['entities'][1][i][1]['configs'][1])):
+                columns = {}
+                for k in config_keys:
+                    vals = []
+                    # print(k[1])
+                    # print(data['entities'][1][i][1])
+                    # recursive search keys in data['entities'][1][x][1]
+                    vals = self._parse_json_recursively_multi(data['entities'][1][i][1]['configs'][1][x], k[0], vals)
+                    # print(vals)
+                    if len(vals) > k[1]:
+                        columns[k[0]] = vals[k[1]]
+                    # print(r)
+                    # if r is not None:
+                    #     columns[k] = r[1]
+                # print(columns)
+                ndata.append(entity_columns | columns)
+        print(ndata)
+
+        return ndata
