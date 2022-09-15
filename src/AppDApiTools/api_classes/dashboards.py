@@ -7,7 +7,7 @@ import re
 import sys
 import zipfile
 from functools import reduce
-
+from cryptography.fernet import Fernet
 import requests
 import logging
 from .api_base import ApiBase
@@ -32,7 +32,7 @@ class Dashboards(ApiBase):
         class_commands.add_argument('--id', help='Specific dashboard id or comma list')
         class_commands.add_argument('--builder_config', help='Search and replace config file in json')
         class_commands.add_argument('--input', help='The input template created with the AppDynamics UI')
-        class_commands.add_argument('--output', help='The output file.')
+        class_commands.add_argument('--output', help='The output file.', nargs='?', const='dashboard_name')
         class_commands.add_argument('--prettify', help='Prettify the json output', action='store_true')
         class_commands.add_argument('--verbose', help='Enable verbose output', action='store_true')
         class_commands.add_argument('--name', help='Set the name of the new dashboard', default=False)
@@ -84,18 +84,35 @@ class Dashboards(ApiBase):
             print('No dashboard id specified with --id, see --help')
             sys.exit()
         self.do_verbose_print(f'Attempting to export dashboard with id={self.args.id}')
-        token = self.get_oauth_token()
+        #token = self.get_oauth_token()
         base_url = self.config['CONTROLLER_INFO']['base_url']
-        headers = {"Authorization": "Bearer " + token}
+        #headers = {"Authorization": "Bearer " + token}
+        crypt_key = str.encode(self.config['CONTROLLER_INFO']['key'], 'UTF-8')
+        fcrypt = Fernet(crypt_key)
+        passwd = fcrypt.decrypt(str.encode(self.config['CONTROLLER_INFO']['psw'], 'UTF-8'))
+        auth = (self.config['CONTROLLER_INFO']['user'] + '@' + self.config['CONTROLLER_INFO']['account_name'],
+                passwd)
         url = base_url + 'controller/CustomDashboardImportExportServlet?dashboardId=' + self.args.id + '&output=JSON'
-        response = requests.get(url, headers=headers)
+        try:
+            #response = requests.get(url, headers=headers)
+            response = requests.get(url, auth=auth)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as err:
+            raise SystemExit(f'Dashboard api export call returned HTTPError: {err}')
         dash_data = response.json()
-        d_file = dash_data['name'].strip() + ".json"
-        if self.args.output:
-            d_file = self.args.output
+        try:
+            d_file = dash_data['name'].strip() + ".json"
+        except KeyError as err:
+            raise SystemExit(f'Dashboard element: {err} not found, likely invalid dashboard id')
         json_obj = json.dumps(dash_data)
-        with open(d_file, "w") as outfile:
-            outfile.write(json_obj)
+        if self.args.output:
+            if self.args.output != 'dashboard_name':
+                self.do_verbose_print(f'Setting output name from commandline instead of dashboard name...')
+                d_file = self.args.output
+            with open(d_file, "w") as outfile:
+                self.do_verbose_print(f'Saving exported file to {d_file}')
+                outfile.write(json_obj)
+
         return dash_data
 
     # Process the options. If an option is not set, return the default value

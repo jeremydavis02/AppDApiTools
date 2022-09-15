@@ -25,6 +25,7 @@ dependencies = [
     "argparse",
     "configparser",
     "requests",
+    "cryptography"
 ]
 [project.urls]
 "Homepage" = "https://github.com/jeremydavis02/AppDApiTools"

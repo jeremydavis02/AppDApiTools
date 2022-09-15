@@ -4,6 +4,8 @@ import importlib
 import pkgutil
 import sys
 import os
+from cryptography.fernet import Fernet
+from getpass import getpass
 import AppDApiTools
 from AppDApiTools import api_classes
 from AppDApiTools.api_classes import api_base
@@ -19,9 +21,16 @@ def build_config():
         for k, v in new_config.items(section):
             new_val = input(f'For section [{section}] please specify {k} :')
             new_config.set(section=section, option=k, value=new_val)
+    crypt_key = Fernet.generate_key()
 
+    secret_pass = getpass(f'Input your user password, which will be encrypted in config: ')
+    fcrypt = Fernet(crypt_key)
+    crypted_password = fcrypt.encrypt(str.encode(secret_pass))
+    new_config.set(section="CONTROLLER_INFO", option="psw", value=str(crypted_password, 'UTF-8'))
+    new_config.set(section="CONTROLLER_INFO", option="key", value=str(crypt_key, 'UTF-8'))
     with open(os.path.join(os.path.dirname(__file__), 'config', 'config.ini'), 'w') as c_file:
         new_config.write(c_file)
+
     sys.exit()
 
 
