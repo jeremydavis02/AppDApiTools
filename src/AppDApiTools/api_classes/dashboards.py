@@ -33,6 +33,7 @@ class Dashboards(ApiBase):
         class_commands.add_argument('--builder_config', help='Search and replace config file in json')
         class_commands.add_argument('--input', help='The input template created with the AppDynamics UI')
         class_commands.add_argument('--output', help='The output file.', nargs='?', const='dashboard_name')
+        class_commands.add_argument('--auth', help='The auth scheme.', choices=['key', 'user'], default='key')
         class_commands.add_argument('--prettify', help='Prettify the json output', action='store_true')
         class_commands.add_argument('--verbose', help='Enable verbose output', action='store_true')
         class_commands.add_argument('--name', help='Set the name of the new dashboard', default=False)
@@ -84,18 +85,24 @@ class Dashboards(ApiBase):
             print('No dashboard id specified with --id, see --help')
             sys.exit()
         self.do_verbose_print(f'Attempting to export dashboard with id={self.args.id}')
-        #token = self.get_oauth_token()
+        if self.args.auth == 'user':
+            self.do_verbose_print('Doing export with user auth...')
+            crypt_key = str.encode(self.config['CONTROLLER_INFO']['key'], 'UTF-8')
+            fcrypt = Fernet(crypt_key)
+            passwd = fcrypt.decrypt(str.encode(self.config['CONTROLLER_INFO']['psw'], 'UTF-8'))
+            auth = (self.config['CONTROLLER_INFO']['user'] + '@' + self.config['CONTROLLER_INFO']['account_name'],
+                    passwd)
+            headers = None
+        else:
+            self.do_verbose_print('Doing export with token auth...')
+            token = self.get_oauth_token()
+            headers = {"Authorization": "Bearer " + token}
+            auth = None
         base_url = self.config['CONTROLLER_INFO']['base_url']
-        #headers = {"Authorization": "Bearer " + token}
-        crypt_key = str.encode(self.config['CONTROLLER_INFO']['key'], 'UTF-8')
-        fcrypt = Fernet(crypt_key)
-        passwd = fcrypt.decrypt(str.encode(self.config['CONTROLLER_INFO']['psw'], 'UTF-8'))
-        auth = (self.config['CONTROLLER_INFO']['user'] + '@' + self.config['CONTROLLER_INFO']['account_name'],
-                passwd)
         url = base_url + 'controller/CustomDashboardImportExportServlet?dashboardId=' + self.args.id + '&output=JSON'
         try:
             #response = requests.get(url, headers=headers)
-            response = requests.get(url, auth=auth)
+            response = requests.get(url, auth=auth, headers=headers)
             response.raise_for_status()
         except requests.exceptions.HTTPError as err:
             raise SystemExit(f'Dashboard api export call returned HTTPError: {err}')
