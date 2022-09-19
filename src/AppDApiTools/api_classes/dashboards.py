@@ -82,7 +82,11 @@ class Dashboards(ApiBase):
             auth = None
         base_url = self.config['CONTROLLER_INFO']['base_url']
         url = base_url + 'controller/CustomDashboardImportExportServlet?output=JSON'
-        response = requests.post(url, auth=auth, files=dashboard, headers=headers)
+        try:
+            response = requests.post(url, auth=auth, files=dashboard, headers=headers)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as err:
+            raise SystemExit(f'Dashboard api export call returned HTTPError: {err}')
         dash_data = response.json()
         self.do_verbose_print(json.dumps(dash_data)[0:200]+'...')
         return dash_data
@@ -117,6 +121,7 @@ class Dashboards(ApiBase):
         except requests.exceptions.HTTPError as err:
             raise SystemExit(f'Dashboard api export call returned HTTPError: {err}')
         dash_data = response.json()
+        self.do_verbose_print(json.dumps(dash_data)[0:200] + '...')
         try:
             d_file = dash_data['name'].strip() + ".json"
         except KeyError as err:
