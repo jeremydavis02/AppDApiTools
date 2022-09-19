@@ -67,12 +67,22 @@ class Dashboards(ApiBase):
             dashboard = json.loads(open(self.args.input, "r").read())
             dash_file_name = os.path.basename(self.args.input)
         dashboard = {'file': (dash_file_name, json.dumps(dashboard))}
-
+        if self.args.auth == 'user':
+            self.do_verbose_print('Doing export with user auth...')
+            crypt_key = str.encode(self.config['CONTROLLER_INFO']['key'], 'UTF-8')
+            fcrypt = Fernet(crypt_key)
+            passwd = fcrypt.decrypt(str.encode(self.config['CONTROLLER_INFO']['psw'], 'UTF-8'))
+            auth = (self.config['CONTROLLER_INFO']['user'] + '@' + self.config['CONTROLLER_INFO']['account_name'],
+                    passwd)
+            headers = None
+        else:
+            self.do_verbose_print('Doing export with token auth...')
+            token = self.get_oauth_token()
+            headers = {"Authorization": "Bearer " + token}
+            auth = None
         base_url = self.config['CONTROLLER_INFO']['base_url']
-        # import with api key throws tons os user issues
-        auth = (self.config['CONTROLLER_INFO']['user']+'@'+self.config['CONTROLLER_INFO']['account_name'], self.config['CONTROLLER_INFO']['psw'])
         url = base_url + 'controller/CustomDashboardImportExportServlet?output=JSON'
-        response = requests.post(url, auth=auth, files=dashboard)
+        response = requests.post(url, auth=auth, files=dashboard, headers=headers)
         dash_data = response.json()
         self.do_verbose_print(json.dumps(dash_data)[0:200]+'...')
         return dash_data
