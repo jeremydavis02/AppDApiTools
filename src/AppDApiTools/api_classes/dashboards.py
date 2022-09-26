@@ -314,6 +314,8 @@ class Dashboards(ApiBase):
 
     # Apply search and replace patterns onto a value
     def _search_and_replace(self, search, key, replace, target):
+        # self.do_verbose_print(str(search)+':'+str(key)+':'+str(replace)+':'+str(target))
+        # self.do_verbose_print(str(type(target)))
         if "key" in search and search["key"] != key:
             return target
 
@@ -324,7 +326,7 @@ class Dashboards(ApiBase):
             return target.replace(str(search["value"]), str(replace["value"]))
 
         # if isinstance(target, (int,long)):
-        if isinstance(target, (int, int)):
+        if isinstance(target, (int, float)):
             return replace["value"] if target == search["value"] else target
 
     def backup(self):

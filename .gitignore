@@ -19,3 +19,5 @@ not_used_setup.py
 .DS_Store
 not_used_requirements.txt
 not_used_requirements.txt
+dist/AppDApiTools-0.0.1-py3-none-any.whl
+dist/AppDApiTools-0.0.1.tar.gz
