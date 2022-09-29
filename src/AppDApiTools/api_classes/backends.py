@@ -16,7 +16,8 @@ class Backends(ApiBase):
     def get_function_parms(cls, subparser):
         #print('getFunctions')
         functions = [
-            'get_list',
+            'list',
+            'url_list'
         ]
         class_commands = subparser.add_parser('Backends', help='Synthetics commands')
         class_commands.add_argument('function', choices=functions, help='The Backend api function to run')
@@ -29,11 +30,31 @@ class Backends(ApiBase):
     def run(cls, args, config):
         # create instance of yourself
         backends = Backends(config, args)
-        if args.function == 'get_list':
+        if args.function == 'list':
             backends.get_list()
+        if args.function == 'url_list':
+            backends.get_url_list()
 
     def __init__(self, config, args):
         super().__init__(config, args)
+
+    def get_url_list(self):
+        output_reset = self.args.output
+        self.args.output = None
+        backend_list = self.get_list()
+        self.args.output = output_reset
+        url_list = []
+        for backend in backend_list:
+            if backend["exitPointType"] == "HTTP":
+                for prop in backend["properties"]:
+                    if prop["name"] == "URL":
+                        url_list.append(prop["value"])
+        url_list.sort()
+        self.do_verbose_print(url_list)
+        if self.args.output is not None:
+            with open(self.args.output, 'w') as fp:
+                fp.write('\n'.join(url_list))
+        return url_list
 
     def get_list(self):
         if self.args.name is None:

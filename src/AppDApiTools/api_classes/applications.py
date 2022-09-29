@@ -1,4 +1,6 @@
 import json
+import sys
+
 from cryptography.fernet import Fernet
 import requests
 import logging
@@ -13,7 +15,7 @@ class Applications(ApiBase):
         # print('getFunctions')
         functions = [
             'list',
-
+            'get'
         ]
         class_commands = subparser.add_parser('Applications', help='Applications commands')
         class_commands.add_argument('function', choices=functions, help='The Applications api function to run')
@@ -21,9 +23,8 @@ class Applications(ApiBase):
 
         class_commands.add_argument('--input', help='The input template created with the AppDynamics UI')
         class_commands.add_argument('--output', help='The output file.', nargs='?', const='dashboard_name')
-        class_commands.add_argument('--prettify', help='Prettify the json output', action='store_true')
         class_commands.add_argument('--verbose', help='Enable verbose output', action='store_true')
-        class_commands.add_argument('--name', help='Set the name of the new dashboard', default=False)
+        class_commands.add_argument('--name', help='Set the name of the application')
         class_commands.add_argument('--auth', help='The auth scheme.', choices=['key', 'user'], default='key')
         return class_commands
 
@@ -32,6 +33,36 @@ class Applications(ApiBase):
         app = Applications(config, args)
         if args.function == 'list':
             app.get_app_list()
+        if args.function == 'get':
+            app.get_app()
+
+    def get_app(self):
+        self.do_verbose_print('Doing Applications Get...')
+
+        if self.args.name is None and self.args.id is None:
+            print(f'Application get requires --name or --id, see --help')
+            sys.exit()
+        output_reset = self.args.output
+        self.args.output = None
+        app_list = self.get_app_list()
+        app_element = {}
+        for app in app_list:
+            if self.args.id:
+                if app["id"] == self.args.id:
+                    app_element = app
+                    break
+            else:
+                if app["name"] == self.args.name:
+                    app_element = app
+                    break
+        self.do_verbose_print(json.dumps(app_element)[0:200] + '...')
+        self.args.output = output_reset
+        if self.args.output:
+            json_obj = json.dumps(app_element)
+            with open(self.args.output, "w") as outfile:
+                self.do_verbose_print(f'Saving app data to {self.args.output}')
+                outfile.write(json_obj)
+        return app_element
 
     def get_app_list(self):
         self.do_verbose_print('Doing Applications List...')
@@ -61,4 +92,4 @@ class Applications(ApiBase):
             with open(self.args.output, "w") as outfile:
                 self.do_verbose_print(f'Saving exported file to {self.args.output}')
                 outfile.write(json_obj)
-
+        return app_data
