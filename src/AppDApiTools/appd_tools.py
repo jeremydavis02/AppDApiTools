@@ -40,9 +40,6 @@ def do_work():
     parser.add_argument("--config", help="create or update config", action="store_true")
     package = api_classes
     for (module_loader, name, ispkg) in pkgutil.iter_modules(package.__path__):
-        #print(module_loader)
-        #print(name)
-        #print(ispkg)
         importlib.import_module('.' + name, 'AppDApiTools.api_classes')
 
     all_my_base_classes = {cls.__name__: cls for cls in api_base.ApiBase.__subclasses__()}
