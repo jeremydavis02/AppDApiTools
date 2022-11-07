@@ -1,6 +1,6 @@
 import requests
 import logging
-
+from cryptography.fernet import Fernet
 
 class ApiBase:
     def __init__(self, config, args):
@@ -45,4 +45,20 @@ class ApiBase:
 
         return token
 
-
+    def set_auth_headers(self):
+        auth = None
+        headers = None
+        if self.args.auth == 'user':
+            self.do_verbose_print('Doing api call with user auth...')
+            crypt_key = str.encode(self.config['CONTROLLER_INFO']['key'], 'UTF-8')
+            fcrypt = Fernet(crypt_key)
+            passwd = fcrypt.decrypt(str.encode(self.config['CONTROLLER_INFO']['psw'], 'UTF-8'))
+            auth = (self.config['CONTROLLER_INFO']['user'] + '@' + self.config['CONTROLLER_INFO']['account_name'],
+                    passwd)
+            headers = None
+        else:
+            self.do_verbose_print('Doing api call with token auth...')
+            token = self.get_oauth_token()
+            headers = {"Authorization": "Bearer " + token}
+            auth = None
+        return headers, auth

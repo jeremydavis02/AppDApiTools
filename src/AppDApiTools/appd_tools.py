@@ -17,17 +17,32 @@ def build_config():
     #print(os.path.join(os.path.dirname(__file__), 'config', 'sample-config.ini'))
     new_config.read(os.path.join(os.path.dirname(__file__), 'config', 'sample-config.ini'))
     #print(new_config.sections())
-    for section in new_config.sections():
-        for k, v in new_config.items(section):
-            new_val = input(f'For section [{section}] please specify {k} :')
-            new_config.set(section=section, option=k, value=new_val)
-    crypt_key = Fernet.generate_key()
+    build_section = True
+    section_count = 0
+    while build_section:
+        section_prefix = ""
+        if section_count <= 0:
+            print(f'First configuration will be used as default when no system configuration is specified. (Recommend using test for default)')
+        else:
+            section_prefix = input(f'Specify system prefix (test|prod|main) any controller system string, no dashes (-) :')+'-'
+        for section in new_config.sections():
+            full_section = section_prefix+section
+            if full_section not in new_config.sections():
+                new_config.add_section(full_section)
+            for k, v in new_config.items(section):
+                new_val = input(f'For section [{full_section}] please specify {k} :')
+                new_config.set(section=full_section, option=k, value=new_val)
+        crypt_key = Fernet.generate_key()
 
-    secret_pass = getpass(f'Input your user password, which will be encrypted in config: ')
-    fcrypt = Fernet(crypt_key)
-    crypted_password = fcrypt.encrypt(str.encode(secret_pass))
-    new_config.set(section="CONTROLLER_INFO", option="psw", value=str(crypted_password, 'UTF-8'))
-    new_config.set(section="CONTROLLER_INFO", option="key", value=str(crypt_key, 'UTF-8'))
+        secret_pass = getpass(f'Input your user password, which will be encrypted in config: ')
+        fcrypt = Fernet(crypt_key)
+        crypted_password = fcrypt.encrypt(str.encode(secret_pass))
+        new_config.set(section=section_prefix+"CONTROLLER_INFO", option="psw", value=str(crypted_password, 'UTF-8'))
+        new_config.set(section=section_prefix+"CONTROLLER_INFO", option="key", value=str(crypt_key, 'UTF-8'))
+        another = input(f'Create another system configuration? (True|False) :')
+        if another.capitalize() == 'False':
+            build_section = False
+        section_count = section_count + 1
     with open(os.path.join(os.path.dirname(__file__), 'config', 'config.ini'), 'w') as c_file:
         new_config.write(c_file)
 
