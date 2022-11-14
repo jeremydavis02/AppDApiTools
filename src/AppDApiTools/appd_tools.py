@@ -15,7 +15,10 @@ def build_config():
     #print("in build config")
     new_config = configparser.ConfigParser(allow_no_value=True)
     #print(os.path.join(os.path.dirname(__file__), 'config', 'sample-config.ini'))
+
     new_config.read(os.path.join(os.path.dirname(__file__), 'config', 'sample-config.ini'))
+    # copy the template to drive the loop with
+    template_config = new_config
     #print(new_config.sections())
     build_section = True
     section_count = 0
@@ -25,11 +28,12 @@ def build_config():
             print(f'First configuration will be used as default when no system configuration is specified. (Recommend using test for default)')
         else:
             section_prefix = input(f'Specify system prefix (test|prod|main) any controller system string, no dashes (-) :')+'-'
-        for section in new_config.sections():
+        for section in template_config.sections():
             full_section = section_prefix+section
             if full_section not in new_config.sections():
                 new_config.add_section(full_section)
-            for k, v in new_config.items(section):
+            for k, v in template_config.items(section):
+                # TODO somehow we are picking up psw on second iteration here.
                 new_val = input(f'For section [{full_section}] please specify {k} :')
                 new_config.set(section=full_section, option=k, value=new_val)
         crypt_key = Fernet.generate_key()

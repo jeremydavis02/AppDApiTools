@@ -20,7 +20,7 @@ class Applications(ApiBase):
         class_commands = subparser.add_parser('Applications', help='Applications commands')
         class_commands.add_argument('function', choices=functions, help='The Applications api function to run')
         class_commands.add_argument('--id', help='Specific Applications id or comma list')
-
+        class_commands.add_argument('--system', help='Specific system prefix config to use')
         class_commands.add_argument('--input', help='The input template created with the AppDynamics UI')
         class_commands.add_argument('--output', help='The output file.', nargs='?', const='dashboard_name')
         class_commands.add_argument('--verbose', help='Enable verbose output', action='store_true')
@@ -31,6 +31,7 @@ class Applications(ApiBase):
     @classmethod
     def run(cls, args, config):
         app = Applications(config, args)
+        app.set_config_prefixes()
         if args.function == 'list':
             app.get_app_list()
         if args.function == 'get':
@@ -66,13 +67,13 @@ class Applications(ApiBase):
 
     def get_app_list(self):
         self.do_verbose_print('Doing Applications List...')
-        base_url = self.config['CONTROLLER_INFO']['base_url']
+        base_url = self.config[self.CONTROLLER_SECTION]['base_url']
         if self.args.auth == 'user':
             self.do_verbose_print('Doing export with user auth...')
-            crypt_key = str.encode(self.config['CONTROLLER_INFO']['key'], 'UTF-8')
+            crypt_key = str.encode(self.config[self.CONTROLLER_SECTION]['key'], 'UTF-8')
             fcrypt = Fernet(crypt_key)
-            passwd = fcrypt.decrypt(str.encode(self.config['CONTROLLER_INFO']['psw'], 'UTF-8'))
-            auth = (self.config['CONTROLLER_INFO']['user'] + '@' + self.config['CONTROLLER_INFO']['account_name'],
+            passwd = fcrypt.decrypt(str.encode(self.config[self.CONTROLLER_SECTION]['psw'], 'UTF-8'))
+            auth = (self.config[self.CONTROLLER_SECTION]['user'] + '@' + self.config[self.CONTROLLER_SECTION]['account_name'],
                     passwd)
             headers = None
         else:

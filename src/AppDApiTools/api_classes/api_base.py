@@ -2,10 +2,20 @@ import requests
 import logging
 from cryptography.fernet import Fernet
 
+
 class ApiBase:
+    
+    CONTROLLER_SECTION = 'CONTROLLER_INFO'
+    SYNTH_SECTION = 'SYNTH_INFO'
+    
     def __init__(self, config, args):
         self.config = config
         self.args = args
+
+    def set_config_prefixes(self):
+        if self.args.system is not None:
+            self.CONTROLLER_SECTION = self.args.system+'-CONTROLLER_INFO'
+            self.SYNTH_SECTION = self.args.system+'-SYNTH_INFO'
 
     def do_verbose_print(self, msg):
         if self.args.verbose:
@@ -27,10 +37,10 @@ class ApiBase:
 
     def get_oauth_token(self):
         # print(token_url)
-        client_id = self.config['CONTROLLER_INFO']['client_id']
-        account_name = self.config['CONTROLLER_INFO']['account_name']
-        client_secret = self.config['CONTROLLER_INFO']['client_secret']
-        token_url = self.config['CONTROLLER_INFO']['token_url']+'?output=json'
+        client_id = self.config[self.CONTROLLER_SECTION]['client_id']
+        account_name = self.config[self.CONTROLLER_SECTION]['account_name']
+        client_secret = self.config[self.CONTROLLER_SECTION]['client_secret']
+        token_url = self.config[self.CONTROLLER_SECTION]['token_url']+'?output=json'
         headers = {"Content-Type": "application/vnd.appd.cntrl+protobuf;v=1"}
         payload = f'grant_type=client_credentials&client_id={client_id}@{account_name}&client_secret={client_secret}'
         try:
@@ -50,10 +60,10 @@ class ApiBase:
         headers = None
         if self.args.auth == 'user':
             self.do_verbose_print('Doing api call with user auth...')
-            crypt_key = str.encode(self.config['CONTROLLER_INFO']['key'], 'UTF-8')
+            crypt_key = str.encode(self.config[self.CONTROLLER_SECTION]['key'], 'UTF-8')
             fcrypt = Fernet(crypt_key)
-            passwd = fcrypt.decrypt(str.encode(self.config['CONTROLLER_INFO']['psw'], 'UTF-8'))
-            auth = (self.config['CONTROLLER_INFO']['user'] + '@' + self.config['CONTROLLER_INFO']['account_name'],
+            passwd = fcrypt.decrypt(str.encode(self.config[self.CONTROLLER_SECTION]['psw'], 'UTF-8'))
+            auth = (self.config[self.CONTROLLER_SECTION]['user'] + '@' + self.config[self.CONTROLLER_SECTION]['account_name'],
                     passwd)
             headers = None
         else:
