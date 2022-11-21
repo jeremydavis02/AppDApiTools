@@ -37,6 +37,21 @@ class Applications(ApiBase):
         if args.function == 'get':
             app.get_app()
 
+    def set_app_arg(self, application_identifier):
+        app_idents = [application_identifier]
+        if ',' in application_identifier:
+            app_idents = application_identifier.split(',')
+        id = []
+        name = []
+        for i in app_idents:
+            if i.isnumeric():
+                id.append(i)
+            else:
+                name.append(i)
+
+        self.args.id = ",".join(id)
+        self.args.name = ",".join(name)
+
     def get_app(self):
         self.do_verbose_print('Doing Applications Get...')
 
@@ -46,16 +61,16 @@ class Applications(ApiBase):
         output_reset = self.args.output
         self.args.output = None
         app_list = self.get_app_list()
-        app_element = {}
+        app_element = []
+        ids = self.args.id.split(",")
+        names = self.args.name.split(",")
+        self.do_verbose_print(f"Searching for these app id's: {ids}")
+        self.do_verbose_print(f"Searching for these app name's: {names}")
         for app in app_list:
-            if self.args.id:
-                if app["id"] == self.args.id:
-                    app_element = app
-                    break
-            else:
-                if app["name"] == self.args.name:
-                    app_element = app
-                    break
+            if app["id"] in ids:
+                app_element.append(app)
+            if app["name"] in names:
+                app_element.append(app)
         self.do_verbose_print(json.dumps(app_element)[0:200] + '...')
         self.args.output = output_reset
         if self.args.output:
