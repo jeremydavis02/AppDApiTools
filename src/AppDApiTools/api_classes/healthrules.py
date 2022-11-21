@@ -212,7 +212,8 @@ class Healthrules(ApiBase):
                 response.raise_for_status()
             except requests.exceptions.HTTPError as err:
                 raise SystemExit(f'Health Rule api export call returned HTTPError: {err}')
-            rule_data.append(response.json())
+            app['health_rules'] = response.json()
+            rule_data.append(app)
             self.do_verbose_print(json.dumps(response.json())[0:200] + '...')
         json_obj = json.dumps(rule_data)
         if self.args.output:
@@ -226,9 +227,12 @@ class Healthrules(ApiBase):
         self.args.output = None
         rule_list = self.get_health_list()
         self.args.output = output_tmp
-        for rule in rule_list:
-            if rule_name == rule["name"]:
-                return rule["id"]
+        rule_ids = {}
+        for app in rule_list:
+            for rule in app['health_rules']:
+                if rule_name == rule["name"]:
+                    rule_ids[app['id']] = {'id': rule['id']}
+        return rule_ids
 
     def get_rule(self):
         # GET <controller_url>/controller/alerting/rest/v1/applications/<application_id>/health-rules/{health-rule-id}
@@ -243,14 +247,15 @@ class Healthrules(ApiBase):
         if self.args.name is None and self.args.id is None:
             print('No health rule name specified with --name or id with --id, see --help')
             sys.exit()
+        rids = []
         if self.args.id is None:
             self.do_verbose_print('health rule name given, getting list to get id')
-            self.args.id = self._get_rule_id(self.args.name)
+            rids = self._get_rule_id(self.args.name)
         base_url = self.config[self.CONTROLLER_SECTION]['base_url']
         headers, auth = self.set_auth_headers()
         rule_data = []
         for app in app_data:
-            url = f'controller/alerting/rest/v1/applications/{app_data["id"]}/health-rules/{self.args.id}'
+            url = f'controller/alerting/rest/v1/applications/{app["id"]}/health-rules/{rids[app["id"]]["id"]}'
 
             try:
                 #response = requests.get(url, headers=headers)
@@ -258,7 +263,8 @@ class Healthrules(ApiBase):
                 response.raise_for_status()
             except requests.exceptions.HTTPError as err:
                 raise SystemExit(f'Health Rule api export call returned HTTPError: {err}')
-            rule_data.append(response.json())
+            app['health_rule_detail'] = response.json()
+            rule_data.append(app)
             self.do_verbose_print(json.dumps(response.json())[0:200] + '...')
         json_obj = json.dumps(rule_data)
         if self.args.output:
