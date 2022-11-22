@@ -192,14 +192,15 @@ class Healthrules(ApiBase):
                 outfile.write(json_obj)
         return action_suppression_data
 
-    def get_health_list(self):
+    def get_health_list(self, app_data=None):
         # GET <controller_url>/controller/alerting/rest/v1/applications/<application_id>/health-rules
         self.set_request_logging()
         self.do_verbose_print('Doing health rule List...')
         if self.args.application is None:
             print('No application id or name specified with --application, see --help')
             sys.exit()
-        app_data = self._get_app_data()
+        if app_data is None:
+            app_data = self._get_app_data()
         base_url = self.config[self.CONTROLLER_SECTION]['base_url']
         headers, auth = self.set_auth_headers()
         rule_data = []
@@ -222,15 +223,19 @@ class Healthrules(ApiBase):
                 outfile.write(json_obj)
         return rule_data
 
-    def _get_rule_id(self, rule_name=None):
+    def _get_rule_id_with_app(self, rule_name=None, rule_id=None):
         output_tmp = self.args.output
         self.args.output = None
         rule_list = self.get_health_list()
         self.args.output = output_tmp
         rule_ids = {}
+        if rule_id is not None:
+            rule_id = int(rule_id)
         for app in rule_list:
             for rule in app['health_rules']:
-                if rule_name == rule["name"]:
+                # self.do_verbose_print(f'Searching for rule id: {rule_id}, rule_name: {rule_name} in {rule}')
+                if rule_name == rule["name"] or rule_id == rule['id']:
+                    # self.do_verbose_print(f'Found for rule id: {rule_id}, rule_name: {rule_name} in {rule}')
                     rule_ids[app['id']] = {'id': rule['id']}
         return rule_ids
 
@@ -250,11 +255,16 @@ class Healthrules(ApiBase):
         rids = []
         if self.args.id is None:
             self.do_verbose_print('health rule name given, getting list to get id')
-            rids = self._get_rule_id(self.args.name)
+            rids = self._get_rule_id_with_app(rule_name=self.args.name)
+        else:
+            rids = self._get_rule_id_with_app(rule_id=self.args.id)
+        self.do_verbose_print(f'rule ids by app: {rids}')
         base_url = self.config[self.CONTROLLER_SECTION]['base_url']
         headers, auth = self.set_auth_headers()
         rule_data = []
         for app in app_data:
+            if app["id"] not in rids or rids[app["id"]]["id"] is None:
+                continue
             url = f'controller/alerting/rest/v1/applications/{app["id"]}/health-rules/{rids[app["id"]]["id"]}'
 
             try:
