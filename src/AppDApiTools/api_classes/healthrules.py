@@ -19,7 +19,8 @@ class Healthrules(ApiBase):
             'get',
             'suppression_list',
             'suppression_get',
-            'suppression_create'
+            'suppression_create',
+            'search'
         ]
         class_commands = subparser.add_parser('Healthrules', help='Healthrules commands')
         class_commands.add_argument('function', choices=functions, help='The Healthrules api function to run')
@@ -50,6 +51,8 @@ class Healthrules(ApiBase):
             app.get_action_suppression()
         if args.function == 'suppression_create':
             app.create_action_suppression()
+        if args.function == 'search':
+            app.search()
 
     def _get_app_data(self):
         newargs = argparse.Namespace(subparser_name='Applications',
@@ -74,6 +77,35 @@ class Healthrules(ApiBase):
         for action in alist:
             if suppression_name == action["name"]:
                 return action["id"]
+
+    def search(self):
+        self.set_request_logging()
+        self.do_verbose_print('Doing Health Rule Search...')
+        if self.args.application is None:
+            print('No application id or name specified with --application, see --help')
+            sys.exit()
+        if self.args.name is None:
+            print('No health rule name specified with --name, see --help')
+            sys.exit()
+        output_tmp = self.args.output
+        self.args.output = None
+        health_list = self.get_health_list()
+        self.args.output = output_tmp
+        # simplicity of getting done lets just loop and remove from whole list
+
+        for app in health_list:
+            match_rule_list = []
+            for rule in app["health_rules"]:
+                if self.args.name.lower() in rule['name'].lower():
+                    match_rule_list.append(rule)
+            app["health_rules"] = match_rule_list
+        json_obj = json.dumps(health_list)
+
+        if self.args.output:
+            with open(self.args.output, "w") as outfile:
+                self.do_verbose_print(f'Saving exported file to {self.args.output}')
+                outfile.write(json_obj)
+        return health_list
 
     def create_action_suppression(self):
         # POST <controller_url>/controller/alerting/rest/v1/applications/<application_id>/action-suppressions

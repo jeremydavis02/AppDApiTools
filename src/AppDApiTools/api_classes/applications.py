@@ -38,6 +38,11 @@ class Applications(ApiBase):
             app.get_app()
 
     def set_app_arg(self, application_identifier):
+        if application_identifier.upper() == 'ALL':
+            # do all apps so just set name and pass on
+            self.args.id = None
+            self.args.name = 'ALL';
+            return
         app_idents = [application_identifier]
         if ',' in application_identifier:
             app_idents = application_identifier.split(',')
@@ -61,16 +66,21 @@ class Applications(ApiBase):
         output_reset = self.args.output
         self.args.output = None
         app_list = self.get_app_list()
+
         app_element = []
-        ids = self.args.id.split(",")
-        names = self.args.name.split(",")
-        self.do_verbose_print(f"Searching for these app id's: {ids}")
-        self.do_verbose_print(f"Searching for these app name's: {names}")
-        for app in app_list:
-            if app["id"] in ids:
-                app_element.append(app)
-            if app["name"] in names:
-                app_element.append(app)
+        if self.args.name == 'ALL':
+            # want all so just return list
+            app_element = app_list
+        else:
+            ids = self.args.id.split(",")
+            names = self.args.name.split(",")
+            self.do_verbose_print(f"Searching for these app id's: {ids}")
+            self.do_verbose_print(f"Searching for these app name's: {names}")
+            for app in app_list:
+                if app["id"] in ids:
+                    app_element.append(app)
+                if app["name"] in names:
+                    app_element.append(app)
         self.do_verbose_print(json.dumps(app_element)[0:200] + '...')
         self.args.output = output_reset
         if self.args.output:
