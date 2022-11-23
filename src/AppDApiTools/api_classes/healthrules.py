@@ -80,7 +80,7 @@ class Healthrules(ApiBase):
         for action in alist:
             print(action)
             if suppression_name == action[0]["name"]:
-                return action["id"]
+                return action[0]["id"]
 
     def create_rule(self):
         self.set_request_logging()
