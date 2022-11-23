@@ -35,6 +35,7 @@ class Healthrules(ApiBase):
         class_commands.add_argument('--duration', help='Suppression duration in minutes')
         class_commands.add_argument('--rule_list', help='Suppression rule names as quoted comma delimited list')
         class_commands.add_argument('--auth', help='The auth scheme.', choices=['key', 'user'], default='key')
+        class_commands.add_argument('--timezone', help='Suppression rule timezone string')
         return class_commands
 
     @classmethod
@@ -73,10 +74,23 @@ class Healthrules(ApiBase):
         output_tmp = self.args.output
         self.args.output = None
         alist = self.get_action_suppression_list()
+        self.do_verbose_print(f'Get Suppression id {alist}')
         self.args.output = output_tmp
+        print(alist)
         for action in alist:
-            if suppression_name == action["name"]:
+            print(action)
+            if suppression_name == action[0]["name"]:
                 return action["id"]
+
+    def create_rule(self):
+        self.set_request_logging()
+        self.do_verbose_print('Doing Health Rule Create...')
+        if self.args.application is None:
+            print('No application id or name specified with --application, see --help')
+            sys.exit()
+        app_data = self._get_app_data()
+        headers, auth = self.set_auth_headers()
+
 
     def search(self):
         self.set_request_logging()
@@ -108,6 +122,7 @@ class Healthrules(ApiBase):
         return health_list
 
     def create_action_suppression(self):
+        # TODO database action suppressions
         # POST <controller_url>/controller/alerting/rest/v1/applications/<application_id>/action-suppressions
         self.set_request_logging()
         self.do_verbose_print('Doing Action Suppression List...')
@@ -133,6 +148,9 @@ class Healthrules(ApiBase):
             if self.args.rule_list is None:
                 print('No --input so --rule_list is required, see --help')
                 sys.exit()
+            if self.args.timezone is None:
+                print('No --timezone so -which is required, see --help')
+                sys.exit()
             start = datetime.datetime.strptime(self.args.start, '%Y-%m-%d %H:%M:%S')
             end = start + datetime.timedelta(minutes=int(self.args.duration))
             rule_list = self.args.rule_list.split(',')
@@ -140,7 +158,7 @@ class Healthrules(ApiBase):
             action_suppression["disableAgentReporting"] = False
             action_suppression["recurringSchedule"] = None
             action_suppression["suppressionScheduleType"] = "ONE_TIME"
-            action_suppression["timezone"] = datetime.datetime.utcnow().astimezone().tzname()
+            action_suppression["timezone"] = self.args.timezone
             action_suppression["startTime"] = start.strftime('%Y-%m-%dT%H:%M:%S')
             action_suppression["endTime"] = end.strftime('%Y-%m-%dT%H:%M:%S')
             action_suppression["affects"] = {"affectedInfoType": "APPLICATION"}
