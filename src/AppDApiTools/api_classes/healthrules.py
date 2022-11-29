@@ -70,18 +70,37 @@ class Healthrules(ApiBase):
         app_data = app.get_app()
         return app_data
 
-    def _get_suppression_id(self, suppression_name=None):
+    def _get_app_action_list(self, ids=None, names=None):
         output_tmp = self.args.output
         self.args.output = None
         alist = self.get_action_suppression_list()
         self.do_verbose_print(f'Get Suppression id {alist}')
         self.args.output = output_tmp
         # TODO this below still doesn't work right with multiple apps
-        print(alist)
-        for action in alist:
-            print(action)
-            if suppression_name == action[0]["name"]:
-                return action[0]["id"]
+        filtered_list = []
+        id_list = []
+        if ids is not None:
+            id_list = ids.split(',')
+        name_list = []
+        if names is not None:
+            name_list = names.split(',')
+        print(id_list)
+        print(name_list)
+        for app in alist:
+            print(app)
+            filtered_actions = []
+            for action_suppression in app['action_suppressions']:
+                for id in id_list:
+                    if id == action_suppression['id']:
+                        filtered_actions.append(action_suppression)
+                for name in name_list:
+                    if name == action_suppression['name']:
+                        filtered_actions.append(action_suppression)
+            if len(filtered_actions) > 0:
+                app_copy = app
+                app_copy['action_suppressions'] = filtered_actions
+                filtered_list.append(app_copy)
+        return filtered_list
 
     def create_rule(self):
         self.set_request_logging()
@@ -186,28 +205,32 @@ class Healthrules(ApiBase):
         if self.args.application is None:
             print('No application id or name specified with --application, see --help')
             sys.exit()
-        app_data = self._get_app_data()
+        #app_data = self._get_app_data()
         base_url = self.config[self.CONTROLLER_SECTION]['base_url']
         if self.args.name is None and self.args.id is None:
             print('No action suppression name specified with --name or id with --id, see --help')
             sys.exit()
-        if self.args.id is None:
-            self.do_verbose_print('action suppression name given, getting list to get id')
-            self.args.id = self._get_suppression_id(self.args.name)
+        app_data = self._get_app_action_list(self.args.id, self.args.name)
         headers, auth = self.set_auth_headers()
         action_suppression_data = []
+        self.do_verbose_print(app_data)
         for app in app_data:
-            url = f'controller/alerting/rest/v1/applications/{app["id"]}/action-suppressions/{self.args.id}?output=JSON'
+            app_actions = []
+            for action in app['action_suppressions']:
+                url = f'controller/alerting/rest/v1/applications/{app["id"]}/action-suppressions/{action["id"]}?output=JSON'
 
-            try:
-                # response = requests.get(url, headers=headers)
-                response = requests.get(base_url + url, auth=auth, headers=headers)
-                response.raise_for_status()
-            except requests.exceptions.HTTPError as err:
-                raise SystemExit(f'Action Suppression details call returned HTTPError: {err}')
+                try:
+                    # response = requests.get(url, headers=headers)
+                    response = requests.get(base_url + url, auth=auth, headers=headers)
+                    response.raise_for_status()
+                except requests.exceptions.HTTPError as err:
+                    raise SystemExit(f'Action Suppression details call returned HTTPError: {err}')
 
-            self.do_verbose_print(json.dumps(response.json())[0:200] + '...')
-            action_suppression_data.append(response.json())
+                self.do_verbose_print(json.dumps(response.json())[0:200] + '...')
+                app_actions.append(response.json())
+            app_copy = app
+            app_copy['action_suppressions'] = app_actions
+            action_suppression_data.append(app_copy)
         json_obj = json.dumps(action_suppression_data)
         if self.args.output:
             with open(self.args.output, "w") as outfile:
@@ -235,7 +258,8 @@ class Healthrules(ApiBase):
             except requests.exceptions.HTTPError as err:
                 raise SystemExit(f'Action Suppression list call returned HTTPError: {err}')
             self.do_verbose_print(json.dumps(response.json())[0:200] + '...')
-            action_suppression_data.append(response.json())
+            app['action_suppressions'] = response.json()
+            action_suppression_data.append(app)
         json_obj = json.dumps(action_suppression_data)
         if self.args.output:
             with open(self.args.output, "w") as outfile:
