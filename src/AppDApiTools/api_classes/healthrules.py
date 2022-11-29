@@ -76,6 +76,7 @@ class Healthrules(ApiBase):
         alist = self.get_action_suppression_list()
         self.do_verbose_print(f'Get Suppression id {alist}')
         self.args.output = output_tmp
+        # TODO this below still doesn't work right with multiple apps
         print(alist)
         for action in alist:
             print(action)

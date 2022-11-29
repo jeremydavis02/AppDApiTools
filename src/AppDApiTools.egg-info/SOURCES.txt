@@ -17,6 +17,7 @@ src/AppDApiTools/api_classes/api_base.py
 src/AppDApiTools/api_classes/applications.py
 src/AppDApiTools/api_classes/backends.py
 src/AppDApiTools/api_classes/dashboards.py
+src/AppDApiTools/api_classes/events.py
 src/AppDApiTools/api_classes/healthrules.py
 src/AppDApiTools/api_classes/metrics.py
 src/AppDApiTools/api_classes/snapshots.py
