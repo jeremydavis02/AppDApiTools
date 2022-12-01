@@ -49,6 +49,10 @@ class Events(ApiBase):
         if args.function == 'publish':
             app.publish()
 
+    # TODO add db event list function get - https://docs.appdynamics.com/appd/22.x/22.9/en/extend-appdynamics/appdynamics-apis/database-visibility-api#id-.DatabaseVisibilityAPIv22.1-GetallDatabaseAgentEvents
+    # TODO GET /controller/rest/applications/_dbmon/events
+    #todo server viz events too?
+
     def get_schema(self):
         self.set_request_logging()
         self.do_verbose_print('Doing Event Schema Get...')
