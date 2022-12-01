@@ -38,18 +38,18 @@ class Applications(ApiBase):
             app.get_app()
 
     def set_app_arg(self, application_identifier):
-        if application_identifier.upper() == 'ALL':
+        if str(application_identifier).upper() == 'ALL':
             # do all apps so just set name and pass on
             self.args.id = None
             self.args.name = 'ALL';
             return
         app_idents = [application_identifier]
-        if ',' in application_identifier:
+        if ',' in str(application_identifier):
             app_idents = application_identifier.split(',')
         id = []
         name = []
         for i in app_idents:
-            if i.isnumeric():
+            if str(i).isnumeric():
                 id.append(i)
             else:
                 name.append(i)
@@ -77,7 +77,8 @@ class Applications(ApiBase):
             self.do_verbose_print(f"Searching for these app id's: {ids}")
             self.do_verbose_print(f"Searching for these app name's: {names}")
             for app in app_list:
-                if app["id"] in ids:
+                self.do_verbose_print(f"Searching app: {app}")
+                if str(app["id"]) in ids:
                     app_element.append(app)
                 if app["name"] in names:
                     app_element.append(app)

@@ -17,10 +17,12 @@ class Healthrules(ApiBase):
         functions = [
             'list',
             'get',
+            'create',
             'suppression_list',
             'suppression_get',
             'suppression_create',
-            'search'
+            'search',
+            'sync_rule'
         ]
         class_commands = subparser.add_parser('Healthrules', help='Healthrules commands')
         class_commands.add_argument('function', choices=functions, help='The Healthrules api function to run')
@@ -46,6 +48,10 @@ class Healthrules(ApiBase):
             app.get_health_list()
         if args.function == 'get':
             app.get_rule()
+        if args.function == 'create':
+            app.create_rule()
+        if args.function == 'sync_rule':
+            app.sync_health_rule()
         if args.function == 'suppression_list':
             app.get_action_suppression_list()
         if args.function == 'suppression_get':
@@ -84,10 +90,10 @@ class Healthrules(ApiBase):
         name_list = []
         if names is not None:
             name_list = names.split(',')
-        print(id_list)
-        print(name_list)
+        #print(id_list)
+        #print(name_list)
         for app in alist:
-            print(app)
+            #print(app)
             filtered_actions = []
             for action_suppression in app['action_suppressions']:
                 for id in id_list:
@@ -102,15 +108,108 @@ class Healthrules(ApiBase):
                 filtered_list.append(app_copy)
         return filtered_list
 
-    def create_rule(self):
+    def sync_health_rule(self):
         self.set_request_logging()
-        self.do_verbose_print('Doing Health Rule Create...')
+        self.do_verbose_print('Doing Health Rule Sync...')
+        if self.args.input is None:
+            print('No json health rule input specified --input, see --help')
+            sys.exit()
         if self.args.application is None:
+            self.do_verbose_print('No applications specified, assuming all')
+            self.args.application = 'all'
+        health_rule = json.loads(open(self.args.input, "r").read())
+        self.args.name = health_rule["name"]
+        self.do_verbose_print(f'Searching for rules named: {self.args.name}')
+        output_temp = self.args.output
+        self.args.output = None
+        health_list = self.search()
+        self.do_verbose_print(f'The search list of all apps: {health_list}')
+        created_list = []
+        for app in health_list:
+            # for sync we depend on search of all apps giving us empty rule list when name not found
+            if len(app['health_rules']) > 0:
+                continue
+            # we will run create, output arg is set to none already, input arg is used and we just reset the all apps arg
+            created_list.append(self.create_rule(app_data=[app]))
+        self.args.output = output_temp
+        if self.args.output:
+            json_obj = json.dumps(created_list)
+            with open(self.args.output, "w") as outfile:
+                self.do_verbose_print(f'Saving exported file to {self.args.output}')
+                outfile.write(json_obj)
+        return created_list
+
+    def delete_rule(self, app_data=None):
+        self.set_request_logging()
+        self.do_verbose_print('Doing Health Rule Delete...')
+        if self.args.application is None and app_data is None:
             print('No application id or name specified with --application, see --help')
             sys.exit()
-        app_data = self._get_app_data()
+        if app_data is None:
+            app_data = self._get_app_data()
+        if self.args.name is None and self.args.id is None:
+            print('No health rule name specified with --name or id with --id, see --help')
+            sys.exit()
+        rids = []
+        if self.args.id is None:
+            self.do_verbose_print('health rule name given, getting list to get id')
+            rids = self._get_rule_id_with_app(rule_name=self.args.name)
+        else:
+            rids = self._get_rule_id_with_app(rule_id=self.args.id)
+        self.do_verbose_print(f'rule ids by app: {rids}')
+        base_url = self.config[self.CONTROLLER_SECTION]['base_url']
         headers, auth = self.set_auth_headers()
+        # DELETE <controller_url>/controller/alerting/rest/v1/applications/<application_id>/health-rules/{health-rule-id}
 
+        for app in app_data:
+            if app["id"] not in rids or rids[app["id"]]["id"] is None:
+                continue
+            url = f'controller/alerting/rest/v1/applications/{app["id"]}/health-rules/{rids[app["id"]]["id"]}'
+
+            try:
+                # response = requests.get(url, headers=headers)
+                response = requests.delete(base_url + url, auth=auth, headers=headers)
+                response.raise_for_status()
+            except requests.exceptions.HTTPError as err:
+                raise SystemExit(f'Health Rule api export call returned HTTPError: {err}')
+            self.do_verbose_print(json.dumps(response.json())[0:200] + '...')
+
+
+    def create_rule(self, app_data=None):
+        self.set_request_logging()
+        self.do_verbose_print('Doing Health Rule Create...')
+        if self.args.application is None and app_data is None:
+            print('No application id or name specified with --application, see --help')
+            sys.exit()
+        if self.args.input is None:
+            print('No json health rule input specified --input, see --help')
+            sys.exit()
+        if app_data is None:
+            app_data = self._get_app_data()
+        base_url = self.config[self.CONTROLLER_SECTION]['base_url']
+        headers, auth = self.set_auth_headers()
+        health_rule = json.loads(open(self.args.input, "r").read())
+        # POST <controller_url>/controller/alerting/rest/v1/applications/<application_id>/health-rules
+        health_rule_data = []
+        for app in app_data:
+            url = f'controller/alerting/rest/v1/applications/{app["id"]}/health-rules'
+
+            try:
+                # response = requests.get(url, headers=headers)
+                response = requests.post(base_url + url, auth=auth, headers=headers, json=health_rule)
+                response.raise_for_status()
+            except requests.exceptions.HTTPError as err:
+                raise SystemExit(f'Health Rule create call returned HTTPError: {err}')
+            app_copy = app
+            app_copy['health_rule_details'] = [response.json()]
+            health_rule_data.append(app_copy)
+            self.do_verbose_print(json.dumps(app_copy)[0:200] + '...')
+        if self.args.output:
+            json_obj = json.dumps(health_rule_data)
+            with open(self.args.output, "w") as outfile:
+                self.do_verbose_print(f'Saving exported file to {self.args.output}')
+                outfile.write(json_obj)
+        return health_rule_data
 
     def search(self):
         self.set_request_logging()
@@ -133,16 +232,16 @@ class Healthrules(ApiBase):
                 if self.args.name.lower() in rule['name'].lower():
                     match_rule_list.append(rule)
             app["health_rules"] = match_rule_list
-        json_obj = json.dumps(health_list)
 
         if self.args.output:
+            json_obj = json.dumps(health_list)
             with open(self.args.output, "w") as outfile:
                 self.do_verbose_print(f'Saving exported file to {self.args.output}')
                 outfile.write(json_obj)
         return health_list
 
     def create_action_suppression(self):
-        # TODO database action suppressions
+        # TODO database action suppressions - no api for databases
         # POST <controller_url>/controller/alerting/rest/v1/applications/<application_id>/action-suppressions
         self.set_request_logging()
         self.do_verbose_print('Doing Action Suppression List...')
@@ -186,6 +285,7 @@ class Healthrules(ApiBase):
 
             self.do_verbose_print(f'Built suppresion create json: {action_suppression}')
         headers, auth = self.set_auth_headers()
+        action_suppression_data = []
         for app in app_data:
             url = f'controller/alerting/rest/v1/applications/{app["id"]}/action-suppressions'
 
@@ -195,8 +295,17 @@ class Healthrules(ApiBase):
                 response.raise_for_status()
             except requests.exceptions.HTTPError as err:
                 raise SystemExit(f'Action Suppression create call returned HTTPError: {err}')
-            action_suppression_data = response.json()
-            self.do_verbose_print(json.dumps(action_suppression_data)[0:200] + '...')
+            app_copy = app
+            app_copy['action_suppressions'] = [response.json()]
+            action_suppression_data.append(app_copy)
+            self.do_verbose_print(json.dumps(app_copy)[0:200] + '...')
+
+        if self.args.output:
+            json_obj = json.dumps(action_suppression_data)
+            with open(self.args.output, "w") as outfile:
+                self.do_verbose_print(f'Saving exported file to {self.args.output}')
+                outfile.write(json_obj)
+        return action_suppression_data
 
     def get_action_suppression(self):
         # GET <controller_url>/controller/alerting/rest/v1/applications/<application_id>/action-suppressions/{action-suppression-id}
@@ -231,8 +340,9 @@ class Healthrules(ApiBase):
             app_copy = app
             app_copy['action_suppressions'] = app_actions
             action_suppression_data.append(app_copy)
-        json_obj = json.dumps(action_suppression_data)
+
         if self.args.output:
+            json_obj = json.dumps(action_suppression_data)
             with open(self.args.output, "w") as outfile:
                 self.do_verbose_print(f'Saving exported file to {self.args.output}')
                 outfile.write(json_obj)
@@ -260,8 +370,9 @@ class Healthrules(ApiBase):
             self.do_verbose_print(json.dumps(response.json())[0:200] + '...')
             app['action_suppressions'] = response.json()
             action_suppression_data.append(app)
-        json_obj = json.dumps(action_suppression_data)
+
         if self.args.output:
+            json_obj = json.dumps(action_suppression_data)
             with open(self.args.output, "w") as outfile:
                 self.do_verbose_print(f'Saving exported file to {self.args.output}')
                 outfile.write(json_obj)
