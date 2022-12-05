@@ -9,8 +9,9 @@ import argparse
 from .api_base import ApiBase
 from .applications import Applications
 
-class Healthrules(ApiBase):
 
+class Healthrules(ApiBase):
+# TODO Action list of all apps add that
     @classmethod
     def get_function_parms(cls, subparser):
         # print('getFunctions')
@@ -462,8 +463,9 @@ class Healthrules(ApiBase):
             app['health_rule_detail'] = response.json()
             rule_data.append(app)
             self.do_verbose_print(json.dumps(response.json())[0:200] + '...')
-        json_obj = json.dumps(rule_data)
+
         if self.args.output:
+            json_obj = json.dumps(rule_data)
             with open(self.args.output, "w") as outfile:
                 self.do_verbose_print(f'Saving exported file to {self.args.output}')
                 outfile.write(json_obj)

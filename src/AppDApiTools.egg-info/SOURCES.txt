@@ -22,4 +22,5 @@ src/AppDApiTools/api_classes/healthrules.py
 src/AppDApiTools/api_classes/metrics.py
 src/AppDApiTools/api_classes/snapshots.py
 src/AppDApiTools/api_classes/synthetics.py
+src/AppDApiTools/api_classes/users.py
 src/AppDApiTools/config/sample-config.ini
