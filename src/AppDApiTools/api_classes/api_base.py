@@ -13,6 +13,7 @@ class ApiBase:
         self.args = args
 
     def set_config_prefixes(self):
+        # TODO test if exists and fail clean if not
         if self.args.system is not None:
             self.CONTROLLER_SECTION = self.args.system+'-CONTROLLER_INFO'
             self.SYNTH_SECTION = self.args.system+'-SYNTH_INFO'

@@ -19,6 +19,7 @@ class Healthrules(ApiBase):
             'list',
             'get',
             'create',
+            'delete',
             'suppression_list',
             'suppression_get',
             'suppression_create',
@@ -51,6 +52,8 @@ class Healthrules(ApiBase):
             app.get_rule()
         if args.function == 'create':
             app.create_rule()
+        if args.function == 'delete':
+            app.delete_rule()
         if args.function == 'sync_rule':
             app.sync_health_rule()
         if args.function == 'suppression_list':
@@ -172,8 +175,8 @@ class Healthrules(ApiBase):
                 response = requests.delete(base_url + url, auth=auth, headers=headers)
                 response.raise_for_status()
             except requests.exceptions.HTTPError as err:
-                raise SystemExit(f'Health Rule api export call returned HTTPError: {err}')
-            self.do_verbose_print(json.dumps(response.json())[0:200] + '...')
+                raise SystemExit(f'Health Rule Delete api export call returned HTTPError: {err}')
+            self.do_verbose_print(f'Health Rule: {rids[app["id"]]["id"]} deleted!')
 
 
     def create_rule(self, app_data=None):

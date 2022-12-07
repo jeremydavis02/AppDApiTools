@@ -18,7 +18,8 @@ class Users(ApiBase):
         functions = [
             'list',
             'get',
-            'all_data'
+            'all_data',
+            'get_role'
         ]
         class_commands = subparser.add_parser('Users', help='User commands')
         class_commands.add_argument('function', choices=functions, help='The Metrics api function to run')
@@ -42,13 +43,33 @@ class Users(ApiBase):
             app.get()
         if args.function == 'all_data':
             app.all_data()
+        if args.function == 'get_role':
+            app.all_data()
+
+    def get_role(self):
+        self.set_request_logging()
+        self.do_verbose_print('Doing Role Get...')
+        # GET /controller/api/rbac/v1/roles/[roleId]?include-permissions=true
+        # GET /controller/api/rbac/v1/roles/name/[RoleName]?include-permissions=true
 
     def all_data(self):
         self.set_request_logging()
         self.do_verbose_print('Doing Users list (all data)...')
+        out_tmp = self.args.output
         list = self.list()
+        self.args.output = out_tmp
         all_data = []
-        #TODO loop each and get all details
+
+        for user in list["users"]:
+            user = self.get(user_id=user["id"])
+            all_data.append(user)
+        if self.args.output:
+            json_obj = json.dumps(all_data)
+            with open(self.args.output, "w") as outfile:
+                self.do_verbose_print(f'Saving exported file to {self.args.output}')
+                outfile.write(json_obj)
+        return all_data
+
     def list(self):
         self.set_request_logging()
         self.do_verbose_print('Doing Users list...')
