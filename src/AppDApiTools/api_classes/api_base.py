@@ -1,22 +1,25 @@
+import datetime
+
 import requests
 import logging
 from cryptography.fernet import Fernet
 
 
 class ApiBase:
-    
     CONTROLLER_SECTION = 'CONTROLLER_INFO'
     SYNTH_SECTION = 'SYNTH_INFO'
-    
+    oath_token = None
+
     def __init__(self, config, args):
+        self.oauth_token = None
         self.config = config
         self.args = args
 
     def set_config_prefixes(self):
         # TODO test if exists and fail clean if not
         if self.args.system is not None:
-            self.CONTROLLER_SECTION = self.args.system+'-CONTROLLER_INFO'
-            self.SYNTH_SECTION = self.args.system+'-SYNTH_INFO'
+            self.CONTROLLER_SECTION = self.args.system + '-CONTROLLER_INFO'
+            self.SYNTH_SECTION = self.args.system + '-SYNTH_INFO'
 
     def do_verbose_print(self, msg):
         if self.args.verbose:
@@ -38,10 +41,15 @@ class ApiBase:
 
     def get_oauth_token(self):
         # print(token_url)
+        self.do_verbose_print(f'Doing get oath token, current token: {self.oauth_token}')
+        if self.oauth_token is not None and self.oauth_token['expiration_time'] > datetime.datetime.now():
+            # fixing function to only get token once expired
+            self.do_verbose_print(f'Returning valid current token: {self.oauth_token}')
+            return self.oauth_token['access_token']
         client_id = self.config[self.CONTROLLER_SECTION]['client_id']
         account_name = self.config[self.CONTROLLER_SECTION]['account_name']
         client_secret = self.config[self.CONTROLLER_SECTION]['client_secret']
-        token_url = self.config[self.CONTROLLER_SECTION]['token_url']+'?output=json'
+        token_url = self.config[self.CONTROLLER_SECTION]['token_url'] + '?output=json'
         headers = {"Content-Type": "application/vnd.appd.cntrl+protobuf;v=1"}
         payload = f'grant_type=client_credentials&client_id={client_id}@{account_name}&client_secret={client_secret}'
         try:
@@ -51,10 +59,12 @@ class ApiBase:
             raise SystemExit(err)
         self.do_verbose_print(response)
         self.do_verbose_print(response.text)
-        token = response.json()['access_token']
-        self.do_verbose_print(response.json())
+        self.oauth_token = response.json()
+        self.oauth_token['expiration_time'] = datetime.datetime.now() + \
+            datetime.timedelta(seconds=self.oauth_token['expires_in'])
+        self.do_verbose_print(self.oauth_token)
 
-        return token
+        return self.oauth_token['access_token']
 
     def set_auth_headers(self):
         auth = None
@@ -64,8 +74,9 @@ class ApiBase:
             crypt_key = str.encode(self.config[self.CONTROLLER_SECTION]['key'], 'UTF-8')
             fcrypt = Fernet(crypt_key)
             passwd = fcrypt.decrypt(str.encode(self.config[self.CONTROLLER_SECTION]['psw'], 'UTF-8'))
-            auth = (self.config[self.CONTROLLER_SECTION]['user'] + '@' + self.config[self.CONTROLLER_SECTION]['account_name'],
-                    passwd)
+            auth = (
+            self.config[self.CONTROLLER_SECTION]['user'] + '@' + self.config[self.CONTROLLER_SECTION]['account_name'],
+            passwd)
             headers = None
         else:
             self.do_verbose_print('Doing api call with token auth...')

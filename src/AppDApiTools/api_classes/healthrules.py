@@ -458,7 +458,6 @@ class Healthrules(ApiBase):
             url = f'controller/alerting/rest/v1/applications/{app["id"]}/health-rules/{rids[app["id"]]["id"]}'
 
             try:
-                #response = requests.get(url, headers=headers)
                 response = requests.get(base_url+url, auth=auth, headers=headers)
                 response.raise_for_status()
             except requests.exceptions.HTTPError as err:

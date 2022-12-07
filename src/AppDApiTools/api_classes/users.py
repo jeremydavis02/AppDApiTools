@@ -44,13 +44,53 @@ class Users(ApiBase):
         if args.function == 'all_data':
             app.all_data()
         if args.function == 'get_role':
-            app.all_data()
+            app.get_role()
 
-    def get_role(self):
+    def get_role(self, **kwargs):
         self.set_request_logging()
         self.do_verbose_print('Doing Role Get...')
         # GET /controller/api/rbac/v1/roles/[roleId]?include-permissions=true
         # GET /controller/api/rbac/v1/roles/name/[RoleName]?include-permissions=true
+        # TODO below with kwargs overrides is cleaner way to override config parser for internal calls so replace other code with this
+        role_name = self.args.name
+        role_id = self.args.id
+        role_output = self.args.output
+        if 'name' in kwargs:
+            role_name = kwargs['name']
+        if 'id' in kwargs:
+            role_id = kwargs['id']
+        if 'output' in kwargs:
+            role_output = kwargs['output']
+        if role_name is None and role_id is None:
+            print('No role specified with --name or --id, see --help')
+            sys.exit()
+        base_url = self.config[self.CONTROLLER_SECTION]['base_url']
+        headers, auth = self.set_auth_headers()
+        url = f'controller/api/rbac/v1/roles/name/{role_name}?include-permissions=true'
+        if role_id is not None:
+            # id will take precedence over name if both given
+            url = f'controller/api/rbac/v1/roles/{role_id}?include-permissions=true'
+        try:
+            response = requests.get(base_url + url, auth=auth, headers=headers)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as err:
+            raise SystemExit(f'Health Rule api export call returned HTTPError: {err}')
+        role_data = response.json()
+        if role_output:
+            json_obj = json.dumps(role_data)
+            with open(role_output, "w") as outfile:
+                self.do_verbose_print(f'Saving exported file to {self.args.output}')
+                outfile.write(json_obj)
+        return role_data
+
+    def _get_role_ids(self, user_data):
+        id_list = []
+        self.do_verbose_print(f'Doing get role ids for: {user_data}')
+        if 'roles' not in user_data:
+            return id_list
+        for r in user_data['roles']:
+            id_list.append(r['id'])
+        return id_list
 
     def all_data(self):
         self.set_request_logging()
@@ -58,11 +98,18 @@ class Users(ApiBase):
         out_tmp = self.args.output
         list = self.list()
         self.args.output = out_tmp
-        all_data = []
-
+        all_data = {
+            'users': [],
+            'roles': []
+        }
+        role_id_set = set()
         for user in list["users"]:
             user = self.get(user_id=user["id"])
-            all_data.append(user)
+            all_data['users'].append(user)
+            role_id_set.update(self._get_role_ids(user_data=user))
+        for role_id in role_id_set:
+            role = self.get_role(output=None, id=role_id)
+            all_data['roles'].append(role)
         if self.args.output:
             json_obj = json.dumps(all_data)
             with open(self.args.output, "w") as outfile:
@@ -99,7 +146,7 @@ class Users(ApiBase):
 
     def get(self, user_id=None):
         self.set_request_logging()
-        self.do_verbose_print('Doing Users list...')
+        self.do_verbose_print('Doing Users Get...')
         if user_id is None and self.args.id is None:
             print('No user id specified with --id, see --help')
             sys.exit()
