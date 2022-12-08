@@ -41,11 +41,12 @@ class ApiBase:
 
     def get_oauth_token(self):
         # print(token_url)
-        self.do_verbose_print(f'Doing get oath token, current token: {self.oauth_token}')
+
         if self.oauth_token is not None and self.oauth_token['expiration_time'] > datetime.datetime.now():
             # fixing function to only get token once expired
             self.do_verbose_print(f'Returning valid current token: {self.oauth_token}')
             return self.oauth_token['access_token']
+        self.do_verbose_print(f'Doing get oath token, current token: {self.oauth_token}')
         client_id = self.config[self.CONTROLLER_SECTION]['client_id']
         account_name = self.config[self.CONTROLLER_SECTION]['account_name']
         client_secret = self.config[self.CONTROLLER_SECTION]['client_secret']

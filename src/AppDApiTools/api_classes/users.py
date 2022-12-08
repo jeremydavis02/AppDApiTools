@@ -79,7 +79,7 @@ class Users(ApiBase):
         if role_output:
             json_obj = json.dumps(role_data)
             with open(role_output, "w") as outfile:
-                self.do_verbose_print(f'Saving exported file to {self.args.output}')
+                self.do_verbose_print(f'Saving exported file to {role_output}')
                 outfile.write(json_obj)
         return role_data
 
