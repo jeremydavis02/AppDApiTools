@@ -1,3 +1,4 @@
+import csv
 import json
 import requests
 import logging
@@ -23,7 +24,9 @@ class Backends(ApiBase):
         class_commands.add_argument('function', choices=functions, help='The Backend api function to run')
         class_commands.add_argument('--name', help='Specific application name')
         class_commands.add_argument('--output', help='The output file.')
+        class_commands.add_argument('--csv_fields', help='The fields to output in csv from json along with main backend fields comma delimited')
         class_commands.add_argument('--verbose', help='Enable verbose output', action='store_true')
+        class_commands.add_argument('--auth', help='The auth scheme.', choices=['key', 'user'], default='key')
         return class_commands
 
     @classmethod
@@ -57,18 +60,24 @@ class Backends(ApiBase):
         return url_list
 
     def get_list(self):
+        self.set_request_logging()
         if self.args.name is None:
             print('this function requires --name for application')
             return {}
-        token = self.get_oauth_token()
         base_url = self.config['CONTROLLER_INFO']['base_url']
-        headers = {"Authorization": "Bearer " + token}
+        headers, auth = self.set_auth_headers()
         url = base_url + 'controller/rest/applications/' + self.args.name + '/backends?output=JSON'
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, auth=auth, headers=headers)
         self.do_verbose_print(response.json())
         if self.args.output is not None:
-            fp = open(self.args.output, 'w')
-            json.dump(response.json(), fp)
+            if '.csv' in self.args.output:
+                if self.args.csv_fields is None:
+                    print('this function requires --csv_fields for csv output')
+                    return {}
+                self.make_csv(response.json(), self.args.csv_fields.split(","))
+            else:
+                fp = open(self.args.output, 'w')
+                json.dump(response.json(), fp)
         return response.json()
 
     def _parse_json_recursively_multi(self, json_object, target_key, vals=[]):
@@ -85,33 +94,34 @@ class Backends(ApiBase):
 
         return vals
 
-    def build_json_list(self, data={}, config_keys=[], entity_keys=[]):
+    def _build_json_list(self, data, fields):
         ndata = []
-        # loop through data['entities'][1][x]
-        for i in range(len(data['entities'][1])):
-            entity_columns = {}
-            if len(entity_keys) > 0:
-                # lets check non recursively before diving into config
-                for ek in entity_keys:
-                    if ek in data['entities'][1][i][1]:
-                        entity_columns[ek] = data['entities'][1][i][1][ek]
-            # print(columns)
-            for x in range(len(data['entities'][1][i][1]['configs'][1])):
-                columns = {}
-                for k in config_keys:
-                    vals = []
-                    # print(k[1])
-                    # print(data['entities'][1][i][1])
-                    # recursive search keys in data['entities'][1][x][1]
-                    vals = self._parse_json_recursively_multi(data['entities'][1][i][1]['configs'][1][x], k[0], vals)
-                    # print(vals)
-                    if len(vals) > k[1]:
-                        columns[k[0]] = vals[k[1]]
-                    # print(r)
-                    # if r is not None:
-                    #     columns[k] = r[1]
+        # loop through backend list
+        for i in range(len(data)):
+            backend_columns = {}
+            if len(fields) > 0:
+                prop_columns = {}
+                for bk in fields:
+                    if bk in data[i]:
+                        backend_columns[bk] = data[i][bk]
                 # print(columns)
-                ndata.append(entity_columns | columns)
-        print(ndata)
+                for x in range(len(data[i]['properties'])):
+                    for k in fields:
+                        if data[i]['properties'][x]['name'] == k:
+                            prop_columns[data[i]['properties'][x]['name']] = data[i]['properties'][x]['value']
 
+                ndata.append(backend_columns | prop_columns)
+        print(ndata)
         return ndata
+
+    def make_csv(self, data, fields):
+
+        records = self._build_json_list(data, fields)
+        with open(self.args.output, 'w', newline='') as csvfile:
+            backend_writer = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            # write header
+            header = fields
+            backend_writer.writerow(header)
+            for r in records:
+                print(r)
+                backend_writer.writerow(r.values())

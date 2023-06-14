@@ -8,6 +8,7 @@ import logging
 import argparse
 from .api_base import ApiBase
 from .applications import Applications
+import sqlite3
 
 
 class Metrics(ApiBase):

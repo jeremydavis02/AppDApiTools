@@ -1,1 +1,2 @@
 include src/AppDApiTools/config/sample-config.ini
+include src/AppDApiTools/data/appd_api_tools.db

@@ -24,3 +24,4 @@ src/AppDApiTools/api_classes/snapshots.py
 src/AppDApiTools/api_classes/synthetics.py
 src/AppDApiTools/api_classes/users.py
 src/AppDApiTools/config/sample-config.ini
+src/AppDApiTools/data/appd_api_tools.db
