@@ -24,6 +24,7 @@ class Synthetics(ApiBase):
         class_commands.add_argument('--appkey', help='Specific appkey synthetic jobs')
         class_commands.add_argument('--verbose', help='Enable verbose output', action='store_true')
         class_commands.add_argument('--output', help='The output file.')
+        class_commands.add_argument('--system', help='Specific system prefix config to use')
         return class_commands
 
 
@@ -33,6 +34,7 @@ class Synthetics(ApiBase):
 
         # create instance of yourself
         synth = Synthetics(config, args)
+        synth.set_config_prefixes()
         #print(args.function)
         if args.function == 'web_list':
             synth.web_get_list()
@@ -47,8 +49,8 @@ class Synthetics(ApiBase):
         if args.function == 'enable_api':
             synth.enable_api()
 
-    def __init__(self, config, args):
-        super().__init__(config, args)
+    # def __init__(self, config, args):
+    #     super().__init__(config, args)
 
     def api_get_list(self) -> dict:
         self.set_request_logging()
@@ -66,11 +68,12 @@ class Synthetics(ApiBase):
         self.set_request_logging()
         self.do_verbose_print('Initiating web synthetic get list call...')
         if self.config is None:
+            self.do_verbose_print("No config set, returning empty {}")
             return {}
-        url = self.config['SYNTH_INFO']['synthetic_base_url']+'v1/synthetic/schedule'
-        auth = (self.config['SYNTH_INFO']['eum_account_name'], self.config['SYNTH_INFO']['eum_license_key'])
+        url = self.config[self.SYNTH_SECTION]['synthetic_base_url']+'v1/synthetic/schedule'
+        auth = (self.config[self.SYNTH_SECTION]['eum_account_name'], self.config[self.SYNTH_SECTION]['eum_license_key'])
         response = requests.get(url, auth=auth)
-        #print(response.json())
+        self.do_verbose_print(f'web_get_list response: {response.text}')
         self._dump_output(response.json())
         return response.json()
 
@@ -87,8 +90,8 @@ class Synthetics(ApiBase):
         jid = job_data['_id']
         job_data = json.dumps(job_data)
 
-        url = self.config['SYNTH_INFO']['synthetic_base_url']+'v1/synthetic/schedule/'+jid
-        auth = (self.config['SYNTH_INFO']['eum_account_name'], self.config['SYNTH_INFO']['eum_license_key'])
+        url = self.config[self.SYNTH_SECTION]['synthetic_base_url']+'v1/synthetic/schedule/'+jid
+        auth = (self.config[self.SYNTH_SECTION]['eum_account_name'], self.config['SYNTH_INFO']['eum_license_key'])
         headers = {'Content-type': 'application/json'}
         response = requests.put(url, auth=auth, data=job_data, headers=headers)
         self.do_verbose_print(response)
@@ -123,8 +126,8 @@ class Synthetics(ApiBase):
         self.do_verbose_print('Initiating api synthetic update call...')
         jid = job_data['_id']
         job_data = json.dumps(job_data)
-        url = self.config['SYNTH_INFO']['synthetic_base_url'] + 'v1/synthetic/api/schedule/' + jid
-        auth = (self.config['SYNTH_INFO']['eum_account_name'], self.config['SYNTH_INFO']['eum_license_key'])
+        url = self.config[self.SYNTH_SECTION]['synthetic_base_url'] + 'v1/synthetic/api/schedule/' + jid
+        auth = (self.config[self.SYNTH_SECTION]['eum_account_name'], self.config['SYNTH_INFO']['eum_license_key'])
         headers = {'Content-type': 'application/json'}
         response = requests.put(url, auth=auth, data=job_data, headers=headers)
         self.do_verbose_print(response)

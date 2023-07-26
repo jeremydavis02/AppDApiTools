@@ -11,7 +11,7 @@ from AppDApiTools import api_classes
 from AppDApiTools.api_classes import api_base
 
 
-def build_config():
+def build_config(args=None):
     #print("in build config")
     new_config = configparser.ConfigParser(allow_no_value=True)
     #print(os.path.join(os.path.dirname(__file__), 'config', 'sample-config.ini'))
@@ -19,12 +19,19 @@ def build_config():
     new_config.read(os.path.join(os.path.dirname(__file__), 'config', 'sample-config.ini'))
     # copy the template to drive the loop with
     template_config = new_config
-    #print(new_config.sections())
+    # print(new_config.sections())
     build_section = True
     section_count = 0
+    new_or_append = 'w'
+    if args.add_section:
+        # make sure we append not overwrite
+        new_or_append = 'a'
+        # also we need to remove the base new config sections so they don't duplicate
+        new_config.remove_section("CONTROLLER_INFO")
+        new_config.remove_section("SYNTH_INFO")
     while build_section:
         section_prefix = ""
-        if section_count <= 0:
+        if section_count <= 0 and not args.add_section:
             print(f'First configuration will be used as default when no system configuration is specified. (Recommend using test for default)')
         else:
             section_prefix = input(f'Specify system prefix (test|prod|main) any controller system string, no dashes (-) :')+'-'
@@ -47,7 +54,8 @@ def build_config():
         if another.capitalize() == 'False':
             build_section = False
         section_count = section_count + 1
-    with open(os.path.join(os.path.dirname(__file__), 'config', 'config.ini'), 'w') as c_file:
+
+    with open(os.path.join(os.path.dirname(__file__), 'config', 'config.ini'), new_or_append) as c_file:
         new_config.write(c_file)
 
     sys.exit()
@@ -57,6 +65,7 @@ def do_work():
     # Use a breakpoint in the code line below to debug your script.
     parser = argparse.ArgumentParser(description='AppDynamics API Tooling.')
     parser.add_argument("--config", help="create or update config", action="store_true")
+    parser.add_argument("--add_section", help="add a new controller config to existing", action="store_true")
     package = api_classes
     for (module_loader, name, ispkg) in pkgutil.iter_modules(package.__path__):
         importlib.import_module('.' + name, 'AppDApiTools.api_classes')
@@ -72,7 +81,7 @@ def do_work():
 
     args = parser.parse_args()
     if args.config:
-        build_config()
+        build_config(args)
         sys.exit()
     if args.subparser_name is None:
         sys.stderr.write('No Api Group Specified!')
