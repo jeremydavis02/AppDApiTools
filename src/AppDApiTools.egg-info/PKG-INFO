@@ -11,6 +11,12 @@ Classifier: Programming Language :: Python :: 3.9
 Requires-Python: >=3.9
 Description-Content-Type: text/markdown
 License-File: LICENSE
+Requires-Dist: requests
+Requires-Dist: importlib-metadata; python_version >= "3.9"
+Requires-Dist: argparse
+Requires-Dist: configparser
+Requires-Dist: requests
+Requires-Dist: cryptography
 
 # AppDApiTools
 

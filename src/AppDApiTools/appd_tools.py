@@ -23,7 +23,7 @@ def build_config(args=None):
     build_section = True
     section_count = 0
     new_or_append = 'w'
-    if args.add_section:
+    if args is not None and args.add_section:
         # make sure we append not overwrite
         new_or_append = 'a'
         # also we need to remove the base new config sections so they don't duplicate
@@ -31,7 +31,7 @@ def build_config(args=None):
         new_config.remove_section("SYNTH_INFO")
     while build_section:
         section_prefix = ""
-        if section_count <= 0 and not args.add_section:
+        if section_count <= 0 and (args is not None and not args.add_section):
             print(f'First configuration will be used as default when no system configuration is specified. (Recommend using test for default)')
         else:
             section_prefix = input(f'Specify system prefix (test|prod|main) any controller system string, no dashes (-) :')+'-'
